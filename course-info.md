@@ -5,6 +5,13 @@
 - Get the theoretical and practical knowledge from the areas of parallel and distributed systems, parallel programming and processing, to effectively tackle computational problems using modern computing platforms and tools.  
 - Parallelize scientific and engineering problems by structuring them correctly, selecting the appropriate hardware, and applying suitable programming concepts to produce efficient solutions.  
 - Gain knowledge to work with the national high-performance infrastructure.
+- Gained programming skills:
+  - shared memory programming with OpenMP,
+  - modern accelerator programming with CUDA,
+  - distributed memory programming with OpenMP.
+- Parallel programming patterns:
+  - Parallel programming from a point of view of parallel computation patterns.
+  - Map, Reduce, Stencil and recurrence, Collectives, Data reorganization, Fork-Join, Pipeline.
 
 ## Outcomes
 

@@ -127,6 +127,7 @@
 ## Vector Processor
 
 - single instruction, multiple data
+- single-core processor (P) extended with many processing elements (PE) working in parallel on vector data
 
   <img src="figures/vector-computer.png" alt="Vector computer" width="35%">
 
@@ -134,7 +135,7 @@
 - data parallel problems, operate on vectors
 - scalar support
 - vector support
-  - registers functional units, instructions
+  - registers, functional units, instructions
   - operand alignment in memory
   - memory interleaving for faster access
   - size of problem must fit to the hardware

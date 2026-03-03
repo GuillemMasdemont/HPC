@@ -3,24 +3,20 @@
 ## Pattern-based programming
 
 - Patterns are “best practices” for solving specific problems.
-- Patterns re universal, can be applied to any programming system.
+- Patterns are universal, can be applied to any programming system.
 - Patterns can be used to organize your code, leading to algorithms that are more scalable and maintainable.
 - A pattern supports a particular algorithmic structure with an efficient implementation.  
 - Good parallel programming models support a set of useful parallel patterns with low-overhead implementations.
 - New patterns can be derived from existing patterns.
 - Serial and parallel patterns.
 
-- Focus on algorithm strategy patterns
-  - Algorithm skeletons
-  - Not design patterns (high level, abstract)
-  - Not implementation patterns (low-level, hardware specific)
-- Patterns
-  - Semantics
+- Focus on
+  - algorithm skeletons
     - building blocks, arrangement of tasks, data dependencies
-    - design phase
-  - Implementation
-    - Granularity, good use of cache
-    - Focus on data parallelism to ensure scalability
+    - focus on data parallelism to ensure scalability
+  - implementation patterns (low-level, hardware specific)
+    - granularity, good use of cache
+  - Not design patterns (high level, abstract)
 
 - Task
   - Task is a unit of independent (potentially parallel) work.

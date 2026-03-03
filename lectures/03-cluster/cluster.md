@@ -69,7 +69,7 @@
 - hardware virtualization (virtual machines) and operating system virtualization (containers)
 - for clusters, container-based virtualization is more suitable
 
-  <img src="figures/containers.png" alt="Containers" width="70%">
+  <img src="figures/containers.png" alt="Containers" width="55%">
 
   - containers do not include an operating system, but only the necessary user software and essential libraries making the container images smaller
   - a container manager can start and stop containers efficiently
@@ -185,6 +185,17 @@
 
 #### SLURM examples
 
+- basic cluster info
+
+  ```bash
+  sinfo
+  sinfo --Node --long
+  sinfo --reservation
+  scontrol show node wn101
+  scontrol show partition
+  ```
+
+
 - running four tasks on the same and on two nodes
 
   ```bash
@@ -192,7 +203,7 @@
   srun --ntasks=4 --nodes=2 hostname
   ```
 
-- running a batch job (from files folder) and chacking the queue status
+- running a batch job (from files folder) and checking the queue status
 
   ```bash
   sbatch hn.sh

@@ -3,11 +3,11 @@
 ## Hardware
 
 - in previous chapter we only focused on the compute nodes
-- the architecture of typical cluster is as follows
+- the architecture of typical cluster with the supporting systems is as follows
 
   <img src="figures/cluster.png" alt="Shema of a cluster" width="80%">
 
-  - the head nodes keeps the whole cluster running in a coordinated manner - it runs programs that monitor the status of other nodes, distribute jobs to compute nodes, supervise job execution, and perform other management tasks
+  - the head nodes keeps the whole cluster running in a coordinated manner - it runs services that monitor the status of other nodes, distribute jobs to compute nodes, supervise job execution, and perform other management tasks
 
   - the login nodes enable users to work with the cluster - transfer data and programs to and from the cluster, prepare, monitor, and manage jobs for compute nodes, reserve computational resources on compute nodes, log in to compute nodes, and similar
 
@@ -25,24 +25,24 @@
 
   - operating system
     - performs basic tasks such as memory management, processor management, device control, file system management, security functions, system operation control, resource usage monitoring, and error detection
-    - preferably open source (AlmaLinux)
+    - preferably open source
+      - operating system: AlmaLinux on Arnes cluster
+      - supporting software and tools
+        - automation through Foreman, Puppet, Ansible
+        - administration and metrics: ElasticSearch, Syslog, Icinga, Nagios, IPMI,
+        - monitoring and visualization: Prometheus, Grafana
+        - storage and data handling: dCache, Ceph, Rucio, iRODS, BeeGFS
+        - container and virtualization support: Apptainer/Singularity, Proxmox, OpenStack
 
   - middleware
-    - connects the operating system and user applications within the cluster
-    - it ensures the coordinated operation of multiple nodes, enables centralized node management, handles user authentication, 
-    controls job execution (user applications) on the compute nodes
+    - connects the operating system and user software within the cluster
+    - it ensures the coordinated operation of multiple nodes, enables centralized node management, handles user authentication, controls job execution (user applications) on the compute nodes
     - preferably open-source software:
-      - automation through Foreman, Puppet, Ansible
-      - administration and metrics: ElasticSearch, Syslog, Icinga, Nagios, IPMI, 
-      - monitoring and visualization: Prometheus, Grafana
-      - storage and data handling: dCache, Ceph, Rucio, iRODS, BeeGFS
       - job scheduling: SLURM
       - job submission system: ARC
-      - container and virtualization support: Apptainer/Singularity, Proxmox, OpenStack
-
 
   - user software
-    - with user software, users perform desired functions
+    - with the user software, users perform desired functions
     - user software is the reason why users use clusters
     - only user software adapted for the Linux operating system can be used in clusters
     - the user software can be installed on clusters in various ways:
@@ -69,13 +69,13 @@
 - hardware virtualization (virtual machines) and operating system virtualization (containers)
 - for clusters, container-based virtualization is more suitable
 
-  <img src="figures/containers.png" alt="Containers" width="70%">
+  <img src="figures/containers.png" alt="Containers" width="55%">
 
   - containers do not include an operating system, but only the necessary user software and essential libraries making the container images smaller
   - a container manager can start and stop containers efficiently
   - [Docker containers](https://www.docker.com) are not suitable for clusters (root access), other solutions prevail [Apptainer](https://apptainer.org)/[Singularity](https://docs.sylabs.io/guides/latest/user-guide/)
-    - the user right in the container are the same as outside the container
-    - in an HPC cluster the container manager ensures the containers are isolated while providing each container access to a shared operating system and basic libraries
+    - the user rights inside the container are the same as outside the container
+    - in an HPC cluster, the container manager ensures the containers are isolated while providing each container access to a shared operating system and basic libraries
 
 - repositories of commonly used images
 - a user can tweaks an existing or build his own container image by himself according to the needs
@@ -91,7 +91,7 @@
   - a lot of plugins (accounting, network, MPI)
 - key functions
   - allocates access to resources (compute nodes) to users
-  - framework for starting, executing and monitoring work
+  - provides framework for starting, executing and monitoring work
   - arbitrates contention for resources by managing a queue of pending work
 - resource manager
   - needed in a parallel computer to execute parallel jobs
@@ -130,7 +130,7 @@
 - Usertools
   - information about the cluster
   - list of jobs in a queue
-  - statistics of running and finishsed jobs
+  - statistics of running and finished jobs
   - working with jobs (starting, cancelling)
 
 #### SLURM Entities
@@ -138,7 +138,7 @@
 - nodes: compute resources
 - partitions: logical sets of nodes
   - one node can reside in multiple partitions
-  - one job queue per partition with configured limitations (size, time, users, …)
+  - one job queue per partition with configured properties (memory size, time limits, user permissions, ...)
 - jobs: allocations of resources assigned to a user for a specified amount of time
 - job steps: sets of (possibly parallel) tasks within a job
 
@@ -148,7 +148,7 @@
 - once a job is assigned a set of nodes, the user is able to initiate parallel work in the form of job steps
   - a single job step may be started that utilizes all nodes allocated to the job
   - several job steps may independently use a portion of the allocation
-- multiple job steps can be simultaneously submitted as they queued until there are available resources within the job's allocation
+- multiple job steps can be simultaneously submitted as they are queued until there are available resources within the job's allocation
 - a job lifecycle
 
   <img src="figures/jobs.png" alt="SLURM job lifecycle" width="70%">
@@ -185,6 +185,17 @@
 
 #### SLURM examples
 
+- basic cluster info
+
+  ```bash
+  sinfo
+  sinfo --Node --long
+  sinfo --reservation
+  scontrol show node wn101
+  scontrol show partition
+  ```
+
+
 - running four tasks on the same and on two nodes
 
   ```bash
@@ -192,7 +203,7 @@
   srun --ntasks=4 --nodes=2 hostname
   ```
 
-- running a batch job (from files folder) and chacking the queue status
+- running a batch job (from files folder) and checking the queue status
 
   ```bash
   sbatch hn.sh

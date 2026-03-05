@@ -14,5 +14,5 @@
 
 - Week 02:
   - lectures:
-      [cluster](lectures/03-cluster/cluster.md),
+      [cluster](lectures/03-cluster/cluster.md), [patterns](lectures/04-patterns/patterns.md)
   - labs: [Arnes Cluster](labs/01-Arnes-Cluster/Arnes-Cluster.md)

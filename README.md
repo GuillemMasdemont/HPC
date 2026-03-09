@@ -20,5 +20,5 @@
 
 - Week 03:
   - lectures:
-    [pattern: map](lectures/05-patterns-map/pattern-map.md)
+    [pattern: map](lectures/05-patterns-map/patterns-map.md)
   - labs:

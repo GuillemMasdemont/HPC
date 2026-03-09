@@ -92,7 +92,7 @@
   - reduced memory bandwidth, cache and virtual memory problems
   - less synchronization at start/end of execution
 
-  <img src="figures/fusion-code.png" alt="Code fusion" width="70%">
+    <img src="figures/fusion-code.png" alt="Code fusion" width="70%">
 
 - cache fusion
   - maps broken to tiles
@@ -100,6 +100,8 @@
   - tile should fit in cache, avoid accessing main memory
   - loop with predefined size inside a parallel section of a code
   - each map has the same chunk size
+
+    <img src="figures/fusion-cache.png" alt="Cache fusion" width="70%">
 
 - code fusion is preferred
 

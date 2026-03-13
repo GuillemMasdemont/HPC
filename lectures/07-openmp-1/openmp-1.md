@@ -3,7 +3,7 @@
 - Open MultiProcessing,[https://riptutorial.com/openmp](https://riptutorial.com/openmp)
 - API for shared-memory parallel programming
 - usage
-  - compiler directives ```#pragma omp ...``
+  - compiler directives ```#pragma omp ...```
   - functions
   - environment variables
 - compiling
@@ -109,11 +109,11 @@
   - load imbalance
 
   - implementation
-    - as opposed to vector operations like ```saxpy```, it cannot be efficiently computed on SIMD systems
+    - as opposed to vector operations like saxpy, it cannot be efficiently computed on SIMD systems
     - best with SPMD or tiled SIMD
 
   - [mb0.c](files/mb/mb0.c): manual parallelization
-  - [mb1.c](files/mb/mb1.c): parallelization of outermost loop using ```parallel for```
+  - [mb1.c](files/mb/mb1.c): parallelization of outermost loop using the parallel for
   - [mb2.c](files/mb/mb2.c); parallelization of both loops
   - [mb2.c](files/mb/mb3.c); dynamic scheduling improves performance
   
@@ -167,7 +167,7 @@
     - perform read-modify-write on operands in the cache line
     - mark the cache line modified and unlocks it
   - while the cache line is locked, the cache coherence requests of other CPUs are ignored
-  
+
 - performance of directives
   - ```critical``` uses locks and performs operation in 3 steps:
     - lock (atomically sets a variable),

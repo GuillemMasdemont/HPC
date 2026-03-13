@@ -1,6 +1,6 @@
 // Computation of pi using the Leibniz formula
-// gcc -fopenmp -o pilx pilx.c
-// srun --cpus-per-task=2 pilx
+// gcc -fopenmp -o pil0 pil0.c
+// srun --cpus-per-task=2 pil0
 
 #include <stdio.h>
 #include "omp.h"

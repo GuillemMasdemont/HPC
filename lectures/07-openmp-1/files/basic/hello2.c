@@ -1,3 +1,6 @@
+// hello 1
+// gcc -fopenmp -o hello1 hello1.c
+
 #include <stdio.h>
 #include "omp.h"
 

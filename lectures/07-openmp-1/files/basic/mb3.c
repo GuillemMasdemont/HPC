@@ -1,6 +1,6 @@
 // Mandelbrot set calculation using OpenMP
-// gcc -fopenmp -o mandelbrot0 mandelbrotx.c
-// srun --cpus-per-task=16 mandelbrotx
+// gcc -fopenmp -o mb3 mb3.c
+// srun --cpus-per-task=16 mb3
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +31,12 @@ int main(int argc, char *argv[]) {
     double dy = (yMax - yMin) / (height - 1);
 
     double timeStart = omp_get_wtime();
-    #pragma omp parallel for collapse(2) schedule(dynamic, 1)
+    #pragma omp parallel for collapse(2) schedule(static, 1)
+    // #pragma omp parallel for collapse(2) schedule(static, 10)
+    // #pragma omp parallel for collapse(2) schedule(dynamic, 1)
+    // #pragma omp parallel for collapse(2) schedule(dynamic, 10)
+    // #pragma omp parallel for collapse(2) schedule(guided, 1)
+    // #pragma omp parallel for collapse(2) schedule(guided, 10)
     for (int j = 0; j < height; j++) {
         for (int i = 0; i < width; i++) {
             double cx = xMin + i * dx;

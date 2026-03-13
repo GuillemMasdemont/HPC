@@ -1,6 +1,6 @@
 # OpenMP
 
-- Open MultiProcessing,[https://riptutorial.com/openmp](https://riptutorial.com/openmp)
+- Open MultiProcessing, [https://www.openmp.org/](https://www.openmp.org/resources/tutorials-articles/)
 - API for shared-memory parallel programming
 - usage
   - compiler directives ```#pragma omp ...```

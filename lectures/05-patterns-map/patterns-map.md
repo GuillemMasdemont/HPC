@@ -8,7 +8,7 @@
 
 - serial and parallel execution of the map pattern (elements of index set (black) and elemental functions (blue))
 
-  <img src="figures/map.png" alt="the map pattern", width="50%">
+  <img src="figures/map.png" alt="the map pattern" width="50%">
 
 - examples:
   - gamma correction in images, color space conversions
@@ -57,7 +57,7 @@
 
   - statistics of $shots$ and $hits$ ($shots$ inside the circular quadrant)
   - ratio $hits/shots$ is proportional to $\pi/4$
-  - slow convergence, relative error is proportional to $1/\square{shots}$
+  - slow convergence, relative error is proportional to $1{shots}^{-1/2}$
   - a basic unit of work that can be parallelized is one shot
     - a lot of overhead
     - better to combine several shots to one task

@@ -117,7 +117,7 @@
 
 ## Multithreaded processes
 
-  <img src="figures/process-with-threads.png" alt="OS process with threads" width="60%">
+  <img src="figures/process-with-threads.png" alt="OS process with threads" width="50%">
 
 - shared resources
   - global variables (shown as static variables in the diagram)

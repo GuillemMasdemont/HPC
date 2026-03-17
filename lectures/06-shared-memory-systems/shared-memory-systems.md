@@ -4,10 +4,10 @@
 
 - multiple instructions, multiple data
 
-- share common memory
+- share a common memory
 
   - processors/cores operate independently
-  - processors can access each others' memory
+  - processors can access each other's memory
   - changes in memory by one processor are visible to the others
 
 - UMA vs NUMA
@@ -21,7 +21,7 @@
 
 - memory access
 
-  - memory divided to many modules evenly distributed among processors
+  - memory is divided into many modules evenly distributed among processors
   - each core has its own cache
   - data
     - private: used only by a single processor
@@ -29,33 +29,32 @@
       - used by multiple processors
       - used for inter-process communication
 
-- check the architecture of a node in a the Arnes cluster
+- check the architecture of a node in the Arnes cluster
 
   ```bash
   module load likwid
   srun --reservation=fri --exclusive likwid-topology -g
   ```
 
-
 ### Cache Coherence
 
 - different processors must see the same value at a given memory address
 
 - snooping:
-  - cache memory controller monitors bus to identify which cache lines are written by other processors
+  - cache memory controller monitors the bus to identify which cache lines are written by other processors
   - write invalidate protocol (most common)
-  - get exclusive access before writing the data (write through)
-  - before writing all other copies with this data are invalidated
+  - get exclusive access before writing data (write-through)
+  - before writing, all other copies of this data are invalidated
   - does not scale well
   - illustration
 
-    <img src="figures/cache-coherence-snooping.png" alt="Cache coherence: snooping protocol" width="75%">
+    <img src="figures/cache-coherence-snooping.png" alt="Cache coherence: snooping protocol" width="80%">
 
 - directory-based protocols
   - better suited for NUMA
   - a single directory contains sharing information (statuses) about every cache line
-  - to keep performance, it is distributed among computer’s local memories
-  - must keep track which processors have copies to invalidate them when needed
+  - to keep performance, it is distributed among the computer’s local memories
+  - must keep track of which processors have copies to invalidate them when needed
   - example: simplified protocol
     - statuses
       - U: uncached, not in any cache
@@ -63,14 +62,14 @@
       - E: exclusive, one processor has written the cache line, values in memory are obsolete
     - illustration
 
-      <img src="figures/cache-coherence-directory.png" alt="Cache coherence: directory-based protocols" width="75%">
+      <img src="figures/cache-coherence-directory.png" alt="Cache coherence: directory-based protocols" width="80%">
 
 ### False Sharing
 
-- cache is implemented in hardware, it operates on cache lines
-- even if processors do not operate on the same variable but on variables located in the same cache line, the cache coherence protocols are involved
+- cache is implemented in hardware, and it operates on cache lines
+- even if processors do not operate on the same variable but on variables located in the same cache line, cache coherence protocols are involved
 - does not produce false results
-- disastrous consequences on performance
+- has disastrous consequences on performance
 - illustration
 
   <img src="figures/false-sharing.png" alt="False sharing" width="45%">
@@ -80,7 +79,7 @@
 ### Processes
 
 - when we start a program, a new process appears in the operating system
-- s process is the basic unit to which the operating system allocates resources:
+- a process is the basic unit to which the operating system allocates resources:
   - a share of CPU cycles
   - a portion of free memory, which the OS protects from access by other processes
   - access to communication ports and I/O devices
@@ -90,20 +89,20 @@
   - program code and dynamic libraries
   - global variables defined outside the ```main()``` function
   - the heap is used for dynamic memory allocation
-  - the stack stores everything needed during a function call, as well as variables defined inside function
+  - the stack stores everything needed during a function call, as well as variables defined inside a function
 
-  <img src="figures/process.png" alt="OS process" width="30%">
+  <img src="figures/process.png" alt="OS process" width="25%">
 
 ## Threads
 
-- a thread is the basic execution unit that can be executed by OS
+- a thread is the basic execution unit that can be executed by the OS
 - a process can include several internal execution units, or threads
 - a process always has at least a master thread
 - from the master thread, we can start additional threads
   - this creates a new sequential flow of execution that runs asynchronously with the main one
   - the master flow of execution continues
   - from that point on, the master thread and the additional thread are equivalent
-  - ff needed, we can join the additional thread back to the master thread
+  - if needed, we can join the additional thread back to the master thread
 
   <img src="figures/threads.png" alt="Master and additional threads" width="60%">
 
@@ -118,7 +117,7 @@
 
 ## Multithreaded processes
 
-  <img src="figures/process-with-threads.png" alt="OS process with threads" width="60%">
+  <img src="figures/process-with-threads.png" alt="OS process with threads" width="50%">
 
 - shared resources
   - global variables (shown as static variables in the diagram)
@@ -138,24 +137,24 @@
 
   - time slices
 
-    <img src="figures/time-slice.png" alt="Time slice and context switching" width="60%">
+    <img src="figures/time-slice.png" alt="Time slice and context switching" width="75%">
 
   - process
     - core state information includes:
       - registers, stack pointer, program counter
       - segmentation tables, page tables
-      - to avoid incorrect address translation in the case of the previous and current processes using different memory, the translation lookaside buffer (TLB) must be flushed
-    - a lot of operations which negatively affect performance
+      - to avoid incorrect address translation when the previous and current processes using different memory, the translation lookaside buffer (TLB) must be flushed
+    - this involves a lot of operations which negatively affect performance
   
   - inside a process
     - user space implementation, no interaction with the kernel
     - locally saving thread registers
     - easier to tailor the scheduling policy
 
-- a thread life-cycle:
+- a thread lifecycle:
   - when program starts only the main thread (master thread) is active
   - where a parallel operation is required, master thread creates additional threads
   - threads work concurrently
-  - at the end of a parallel operation, additional threads are suspended, and only master thread continues
+  - at the end of a parallel operation, additional threads are suspended, and only the master thread continues
 
     <img src="figures/thread-lifecycle.png" alt="A thread lifecycle" width="60%">

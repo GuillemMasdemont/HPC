@@ -1,9 +1,9 @@
 # OpenMP
 
-- Open MultiProcessing,[https://riptutorial.com/openmp](https://riptutorial.com/openmp)
+- Open MultiProcessing, [https://www.openmp.org/](https://www.openmp.org/resources/tutorials-articles/)
 - API for shared-memory parallel programming
 - usage
-  - compiler directives ```#pragma omp ...``
+  - compiler directives ```#pragma omp ...```
   - functions
   - environment variables
 - compiling
@@ -54,11 +54,11 @@
 ## Distribution of Work
 
 - directive ```parallel```
-  - source [hello1.c](files/basic/hello1.c)
+  - source [hello1.c](files/hello/hello1.c)
   - check the printouts
   
 - clauses ```sections```, ```section```, and ```nowait```
-  - source [hello2.c](files/basic/hello2.c)
+  - source [hello2.c](files/hello/hello2.c)
   - barrier is automatically set after eachsections directive
   - to disable it add ```nowait``` clause
 
@@ -78,10 +78,8 @@
                                     idx = idx - iStep
     ```
 
-  - parallelization of ```num``` nested loops is possible with ```parallel for collapse (num)```
-  - example
-    - [mb0.c](files/basic/mb0.c): parallelization of outermost loop
-    - [mb1.c](files/basic/mb1.c): parallelization of both loops
+- ```parallel for collapse (num)```
+  - parallelization of ```num``` nested loops
 
 - ```parallel for schedule(type, number)```
   - useful when workload significantly differs from iteration to iteration
@@ -91,9 +89,33 @@
     - guided: each threads gets larger portion of iteration at the beginning, then the number is reduced
     - runtime: set though environment variables
   - ```number```: the smallest chunk of iterations assigned to a thread
-  - example
-    - [schedule.c](files/basic/schedule.c): try different scheduling strategies
-    - [mb2.c](files/basic/mb2.c); dynamic scheduling improves performance
+
+- example: The Mandelbrot set
+
+  - an image of The Mandelbrot set from [Wikipedia](https://en.wikipedia.org/wiki/Mandelbrot_set)
+
+      <img src="figures/Mandel_zoom_00_mandelbrot_set.jpg" alt="The Mandelbrot set" width="70%">
+
+  - the Mandelbrot set (black) is the set of all points $c$ in the complex plane where the value converges with iterations
+    - algorithm
+
+      <img src="figures/mandelbrot-formula.png" alt="Mandelbrot set formulas">
+
+    - Divergence for large $z$
+    - Compute the function up to some maximum value $K$
+
+  - serial control flow in elemental functions
+
+  - load imbalance
+
+  - implementation
+    - as opposed to vector operations like saxpy, it cannot be efficiently computed on SIMD systems
+    - best with SPMD or tiled SIMD
+
+  - [mb0.c](files/mb/mb0.c): manual parallelization
+  - [mb1.c](files/mb/mb1.c): parallelization of outermost loop using the parallel for
+  - [mb2.c](files/mb/mb2.c); parallelization of both loops
+  - [mb2.c](files/mb/mb3.c); dynamic scheduling improves performance
   
 ## Synchronization
 
@@ -123,31 +145,33 @@
 - critical section: only one thread enters critical section at once
 - directives ```critical``` and ```atomic```
   - prevent race condition
-  - ```atomic```
-    - applicable only to scalar variable assignment with operators ++, --, +=, -=, *=, /=, &=, |=, <<=, >>=
-    - faster than critical
+
+  - hardware implementation
+    - modern processors do not lock memory bus, but works on cache line
+    - works together with the MESI cache coherence mechanism
+    - instructions with LOCK prefix
+      - synchronize the cache-line with the main memory
+      - acquire exclusive access to the cache line and mark it locked
+      - perform read-modify-write on operands in the cache line
+      - mark the cache line modified and unlocks it
+    - while the cache line is locked, the cache coherence requests of other CPUs are ignored
+
+  - performance of directives
+    - ```critical``` uses locks and performs operation in 3 steps:
+      - lock (atomically sets a variable),
+      - arbitrary number of instructions,
+      - unlock
+    - ```atomic``` combines all together – instruction takes care of locking and modifying a variable atomically
+      - applicable only to scalar variable assignment with operators ++, --, +=, -=, *=, /=, &=, |=, <<=, >>=
+      - faster than critical
 
 - example:
   - computing $\pi$ following Lebnitz formula
 
     <img src="figures/pi-leibnitz.png" alt="pi bz Leibntz formula">
 
-  - [pil0.c](files/basic/pil0.c): does not compile as for loop is not in canonical form
-  - [pil1.c](files/basic/pil1.c): loop dependence, race condition
-  - [pil2.c](files/basic/pil2.c): correct result, poor performance
+  - [pil0.c](files/pil/pil0.c): does not compile as for loop is not in canonical form
+  - [pil1.c](files/pil/pil1.c): loop dependence, race condition
+  - [pil2.c](files/pil/pil2.c): correct result, poor performance
   
-- hardware implementation
-  - modern processors do not lock memory bus, but works on cache line
-  - works together with the MESI cache coherence mechanism
-  - instructions with LOCK prefix
-    - synchronize the cache-line with the main memory
-    - acquire exclusive access to the cache line and mark it locked
-    - perform read-modify-write on operands in the cache line
-    - mark the cache line modified and unlocks it
-  - while the cache line is locked, the cache coherence requests of other CPUs are ignored
-- performance of directives
-  - ```critical``` uses locks and performs operation in 3 steps:
-    - lock (atomically sets a variable),
-    - arbitrary number of instructions,
-    - unlock
-  - ```atomic``` combines all together – instruction takes care of locking and modifying a variable atomically
+

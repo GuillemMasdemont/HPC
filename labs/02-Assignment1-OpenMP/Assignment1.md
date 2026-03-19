@@ -112,3 +112,96 @@ Implement sequential and parallel versions of Seam Carving using C/C++ and OpenM
 
 1. Shai Avidan and Ariel Shamir. *Seam Carving for content-aware image resizing*. ACM SIGGRAPH 2007. https://doi.org/10.1145/1275808.1276390  
 2. https://shwestrick.github.io/2020/07/29/seam-carve.html
+
+## GUILLEM'S NOTES 
+
+## How to submit a job to the cluster. 
+
+We connect to the cluster by using our login ssh key
+
+`ssh gm64359@hpc-login1.arnes.si `
+
+with the authentification app. 
+
+I faced difficulties running simple jobs without specifying my user client. For that, you must add `--account=fri-users` in your prompt 
+
+`srun --account=fri-users hostname`
+
+Inside the supercomputer my folder gm64359 is assigned to my accound. Each user has a different folder, my folder is private and can't be accesed by the others. 
+
+For running a job inside the cluster we must write a `.sh script` and use
+
+`sbatch run_sample.sh`
+
+Check out the structure of `run_sample.sh`, I had to add the line `#SBATCH --account=fri-users` to specify the client I am using similar to `srun`. 
+ 
+Once the job is submitted, it outputs a `sample_out.log` file. 
+
+The check the status of our job we must use 
+`squeue --me`
+
+We note that when we run `sample.c` using the `sbatch run_sample.sh` we look some libraries. We need also to provide the cluster with those libraries. The proper way to upload files to the cluster is by using in the mac terminal where `stb_image.h` and `stb_image_write.h` are located.  
+
+`scp stb_image.h stb_image_write.h gm64359@hpc-login.arnes.si:.`
+
+The previous command copies the `.h` to my login folder. Similarly, we also need to upload the image by using 
+
+`scp valve.png gm64359@hpc-login.arnes.si:.`
+
+In both cases, we must specify the authentification code. 
+
+Once we run the program, we record the result in the 
+`sample_out.log` file. The output also provides the `valve-out.png` image, which can be downloaded from the cluster by using (for example)
+
+`scp gm64359@hpc-login.arnes.si:~/valve-out.png ~/Downloads/`
+
+___________
+
+## How do we automate this process efficiently?
+
+1.- OPTION 1: 
+
+Create a single script in mac that handles all the pipeline. 
+
+
+2.- OPTION 2: 
+
+VS Code Remote Development: Install SHH extension, and you can directly connect to the cluster from VSCode as a normal extension. 
+
+______
+
+For each thread we got information about the CPU it was running. NUMA 0 for all cores is the goal to accessing memory fast. 
+
+If we modify the run_sample.sh code allowing 
+
+#SBATCH --hint=nomultithread 
+
+In that case, the run_time is shorter and the threads are spawn on the CPU's in order. The CPU are logical id. In the previous case, when using multithreading we are reusing the cores when the thread has finished the job. If we allow no multithread, then we are using different cores for each different thread and it is slightly fastest. For our algorithm, simcarving doesn't benefit from hyperthreading because it is memory bounded not computer bounded. Sometimes, if we increase the number of threads from 1 to 2, it will not increase the speed, if it is memory bound. 
+
+#pragma omp single
+
+The code in the next line is executed only on one thread. 
+
+#pragma omp critical 
+
+enforces that one thread at a time performs next line. 
+
+#program omp for 
+
+is for splitting next line into several threads.  
+
+
+## FEW REMINDERS OF C: 
+
+`&width`	Address-of	"Give me the memory address of width."
+
+`int *ptr`	Pointer Declaration	"Create a variable that can hold a memory address."
+
+`*ptr`	Dereferencing	"Go to the address stored in ptr and see what's inside."
+
+// Asking for space for 1000 bytes
+
+`unsigned char *buffer = malloc(1000);`
+
+// Asking for 1000 items, each 1 byte big. All will be set to 0.
+`unsigned char *buffer = calloc(1000, sizeof(unsigned char));`

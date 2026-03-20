@@ -201,9 +201,6 @@ static void compute_cumulative_sequential(const int *energy, int *cumulative, in
 
 
 
-//-------------------------
-
-
 static void compute_cumulative_up_triangle(const int *energy, int *cumulative, int width, int height, int x_top, int y_top, int height_tile) {
     
     for (int y = height_tile - 1; y >= 0; --y) {
@@ -217,14 +214,15 @@ static void compute_cumulative_up_triangle(const int *energy, int *cumulative, i
             int right = cumulative[(y_ins - 1) * width + clamp_index(x_ins + 1, width)];
                 
             cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+
+            //printf("Calculating pixel up (%d, %d), width %d \n", x_ins, y_ins, width);
         }
     }
 }
 
-
-static void compute_cumulative_down_triangle(const int *energy, int *cumulative, int width, int height, int x_bottom, int y_bottom, int height_triangle) {
+static void compute_cumulative_down_triangle(const int *energy, int *cumulative, int width, int height, int x_bottom, int y_bottom, int height_tile) {
     
-    for (int y = 0; y < height_triangle-1; ++y) {
+    for (int y = 0; y < height_tile; ++y) {
         for (int x = -y; x <= y ; ++x) 
         {
             int x_ins = clamp_index(x_bottom + x, width);
@@ -235,29 +233,29 @@ static void compute_cumulative_down_triangle(const int *energy, int *cumulative,
             int right = cumulative[(y_ins - 1) * width + clamp_index(x_ins + 1, width)];
             
             cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+
+            //printf("Calculating pixel down (%d, %d), width %d \n", x_ins, y_ins, width);
         }
     }
 }
 
 static void compute_cumulative_triangle_parallel(const int *energy, int *cumulative, int width, int height) {
 
-    //printf("Compute cumulative triangle energy...\n");
-
     #pragma omp for schedule(static)
     for (int x = 0; x < width; ++x) {
         cumulative[x] = energy[x];
     }
 
-    int height_tiles = 1; 
+    int height_tiles = 6; 
 
-    for (int y = 0; y < height; y += height_tiles) {
-
-        //#pragma omp for schedule(static)
-        for (int x = 0; x < width; x += 2 * height_tiles) {
+    for (int y = 1; y < height; y += height_tiles) {
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
             compute_cumulative_up_triangle(energy, cumulative, width, height, x, y + height_tiles - 1, height_tiles);
         }
 
-        //#pragma omp for schedule(static)
+
+        #pragma omp for schedule(static)
         for (int x = 0; x < width; x += 2 * height_tiles){
             compute_cumulative_down_triangle(energy, cumulative, width, height, x + height_tiles, y, height_tiles);
         }
@@ -266,7 +264,167 @@ static void compute_cumulative_triangle_parallel(const int *energy, int *cumulat
 
 
 
-//-------------------------
+//------------------------
+
+static void compute_cumulative_up_triangle_reversed(const int *energy, int *cumulative, int width, int height, int x_top, int y_top, int height_tile) {
+    for (int y = height_tile - 1; y >= 0; --y) {
+        for (int x = -y; x <= y; ++x) {
+            int x_ins = clamp_index(x_top + x, width);
+            int y_ins = clamp_index(y_top + y, height);  // going downward in coords but upward in logic
+
+            int left  = cumulative[(y_ins + 1) * width + clamp_index(x_ins - 1, width)];
+            int mid   = cumulative[(y_ins + 1) * width + x_ins];
+            int right = cumulative[(y_ins + 1) * width + clamp_index(x_ins + 1, width)];
+
+            cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+        }
+    }
+}
+
+static void compute_cumulative_down_triangle_reversed(const int *energy, int *cumulative, int width, int height, int x_bottom, int y_bottom, int height_tile) {
+    for (int y = 0; y < height_tile; ++y) {
+        for (int x = -y; x <= y; ++x) {
+            int x_ins = clamp_index(x_bottom + x, width);
+            int y_ins = clamp_index(y_bottom - y, height);  // going upward in image
+
+            int left  = cumulative[(y_ins + 1) * width + clamp_index(x_ins - 1, width)];
+            int mid   = cumulative[(y_ins + 1) * width + x_ins];
+            int right = cumulative[(y_ins + 1) * width + clamp_index(x_ins + 1, width)];
+
+            cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+        }
+    }
+}
+
+static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumulative, int width, int height) {
+
+    int mid_y = height / 2;
+    int height_tiles = 6;
+
+    #pragma omp for schedule(static)
+    for (int x = 0; x < width; ++x) {
+        cumulative[x] = energy[x];
+        cumulative[(height - 1) * width + x] = energy[(height - 1) * width + x];
+    }
+
+    for (int y = 1; y < mid_y; y += height_tiles) {
+
+        // top half 
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
+            compute_cumulative_up_triangle(energy, cumulative, width, mid_y, x, y + height_tiles - 1, height_tiles);
+        }
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width; x += 2 * height_tiles) {
+            compute_cumulative_down_triangle(energy, cumulative, width, mid_y, x + height_tiles, y, height_tiles);
+        }
+
+        // Symmetric y index for the bottom half wave
+        int y_bot = (height - 1) - y;
+
+        // bottom half 
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
+            compute_cumulative_up_triangle_reversed(energy, cumulative, width, height, x, y_bot - height_tiles + 1, height_tiles);
+        }
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width; x += 2 * height_tiles) {
+            compute_cumulative_down_triangle_reversed(energy, cumulative, width, height, x + height_tiles, y_bot, height_tiles);
+        }
+    }
+
+    compute_join_midpoint(cumulative, cumulative + (mid_y * width), width, mid_y);
+}
+
+
+
+// Join at mid_y: sum top-down and best bottom-up neighbor for each cell
+static int compute_join_midpoint(const int *cumulative, int *join_row, int width, int mid_y) {
+    
+    for (int x = 0; x < width; ++x) {
+        int top_val     = cumulative[mid_y * width + x];
+        int bot_left    = cumulative[(mid_y + 1) * width + clamp_index(x - 1, width)];
+        int bot_mid     = cumulative[(mid_y + 1) * width + x];
+        int bot_right   = cumulative[(mid_y + 1) * width + clamp_index(x + 1, width)];
+        join_row[x]     = top_val + min3(bot_left, bot_mid, bot_right);
+    }
+    // implicit barrier here — all join_row values ready before we find the minimum
+
+    // Find the x with minimum total energy at the join row (sequential, width is small relative to height)
+    int best_x = 0;
+    for (int x = 1; x < width; ++x) {
+        if (join_row[x] < join_row[best_x]) {
+            best_x = x;
+        }
+    }
+    return best_x;
+}
+
+
+static void backtrack_seam_double(const int *cumulative, int width, int height, int start_x, int mid_y, int *seam_path) {
+
+    // Seed the midpoint
+    seam_path[mid_y] = start_x;
+
+    // Top half (mid_y -> 0) and bottom half (mid_y -> height-1) run in parallel.
+    // They are fully independent: top walks upward, bottom walks downward.
+    // Each is sequential in its own direction, so we use omp sections here —
+    // these are two single-threaded walks, not data-parallel loops.
+    #pragma omp sections
+    {
+        #pragma omp section
+        {
+            // --- Backtrack upward from mid_y to 0 ---
+            for (int y = mid_y - 1; y >= 0; --y) {
+                int prev_x  = seam_path[y + 1];
+                int left    = clamp_index(prev_x - 1, width);
+                int mid     = prev_x;
+                int right   = clamp_index(prev_x + 1, width);
+
+                int best_x     = left;
+                int best_value = cumulative[y * width + left];
+
+                int mid_value = cumulative[y * width + mid];
+                if (mid_value < best_value) { best_value = mid_value; best_x = mid; }
+
+                int right_value = cumulative[y * width + right];
+                if (right_value < best_value) { best_x = right; }
+
+                seam_path[y] = best_x;
+            }
+        }
+
+        #pragma omp section
+        {
+            // --- Backtrack downward from mid_y to height-1 ---
+            // The bottom cumulative was built upward (each cell depends on row below),
+            // so backtracking goes downward: at row y, look at row y+1 for best neighbor.
+            for (int y = mid_y + 1; y < height; ++y) {
+                int prev_x  = seam_path[y - 1];
+                int left    = clamp_index(prev_x - 1, width);
+                int mid     = prev_x;
+                int right   = clamp_index(prev_x + 1, width);
+
+                int best_x     = left;
+                int best_value = cumulative[y * width + left];
+
+                int mid_value = cumulative[y * width + mid];
+                if (mid_value < best_value) { best_value = mid_value; best_x = mid; }
+
+                int right_value = cumulative[y * width + right];
+                if (right_value < best_value) { best_x = right; }
+
+                seam_path[y] = best_x;
+            }
+        }
+    }
+}
+
+
+//-----------------------
+
+
+
 
 
 
@@ -467,8 +625,10 @@ static double carve_vertical_seams(
         if (use_parallel) {
             compute_energy_parallel(image, stride, width, height, channels, energy);
             //compute_cumulative_basic_parallel(energy, cumulative, width, height);
-            compute_cumulative_triangle_parallel(energy, cumulative, width, height);
-            trace_seam_parallel(cumulative, width, height, seam_path);
+            //compute_cumulative_triangle_parallel(energy, cumulative, width, height);
+            compute_cumulative_top_bottom_parallel(energy, cumulative, width, height);
+            //trace_seam_parallel(cumulative, width, height, seam_path);
+            backtrack_seam_double(cumulative, width, height, 0, height / 2, seam_path);
             remove_seam_copy_parallel(image, stride, width, height, channels, seam_path);
         } else {
             compute_energy_sequential(image, stride, width, height, channels, energy);

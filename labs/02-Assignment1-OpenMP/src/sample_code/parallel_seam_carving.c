@@ -1,7 +1,13 @@
 // Parallel Seam Carving with OpenMP
 // Compile: gcc -O3 -fopenmp parallel_seam_carving.c -lm -o parallel_seam_carving
+// guillem: gcc -O3 -lm -Xpreprocessor -fopenmp \
+//-I/usr/local/opt/libomp/include \
+//-L/usr/local/opt/libomp/lib \
+//-lomp parallel_seam_carving.c -o parallel_seam_carving
+
 // Single run: ./parallel_seam_carving input.png output.png 128 8
 // Benchmark: ./parallel_seam_carving --benchmark ../test_images 128 5 results.csv
+//            reports sequential, basic parallel, triangular, and greedy variants
 
 #include <errno.h>
 #include <limits.h>
@@ -28,6 +34,13 @@ typedef struct {
     int stride;
 } Image;
 
+typedef enum {
+    SEAM_CARVE_MODE_SEQUENTIAL = 0,
+    SEAM_CARVE_MODE_BASIC_PARALLEL,
+    SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
+    SEAM_CARVE_MODE_GREEDY_PARALLEL
+} SeamCarveMode;
+
 static const char *kBenchmarkImages[] = {
     "720x480.png",
     "1024x768.png",
@@ -37,6 +50,29 @@ static const char *kBenchmarkImages[] = {
 };
 
 static const int kThreadCounts[] = {1, 2, 4, 8, 16, 32};
+
+static const char *seam_carve_mode_name(SeamCarveMode mode) {
+    switch (mode) {
+        case SEAM_CARVE_MODE_SEQUENTIAL:
+            return "sequential";
+        case SEAM_CARVE_MODE_BASIC_PARALLEL:
+            return "basic_parallel";
+        case SEAM_CARVE_MODE_TRIANGULAR_PARALLEL:
+            return "triangular_parallel";
+        case SEAM_CARVE_MODE_GREEDY_PARALLEL:
+            return "greedy_parallel";
+        default:
+            return "unknown";
+    }
+}
+
+static int seam_carve_mode_uses_parallel(SeamCarveMode mode) {
+    return mode != SEAM_CARVE_MODE_SEQUENTIAL;
+}
+
+static int seam_carve_mode_uses_greedy(SeamCarveMode mode) {
+    return mode == SEAM_CARVE_MODE_GREEDY_PARALLEL;
+}
 
 static int clamp_index(int value, int max_value) {
     if (value < 0) return 0;
@@ -196,10 +232,239 @@ static void compute_cumulative_sequential(const int *energy, int *cumulative, in
             int left = cumulative[(y - 1) * width + clamp_index(x - 1, width)];
             int mid = cumulative[(y - 1) * width + x];
             int right = cumulative[(y - 1) * width + clamp_index(x + 1, width)];
-            cumulative[y * width + x] = saturating_add_nonnegative(energy[y * width + x], min3(left, mid, right));
+            cumulative[y * width + x] = energy[y * width + x] + min3(left, mid, right);
         }
     }
 }
+
+
+
+static void compute_cumulative_up_triangle(const int *energy, int *cumulative, int width, int height, int x_top, int y_top, int height_tile) {
+    
+    for (int y = height_tile - 1; y >= 0; --y) {
+        for (int x = -y; x <= y; ++x) 
+        {
+            int x_ins = clamp_index(x_top + x, width);
+            int y_ins = clamp_index(y_top - y, height);
+
+            int left = cumulative[(y_ins - 1) * width + clamp_index(x_ins - 1, width)];
+            int mid  = cumulative[(y_ins - 1) * width + x_ins];
+            int right = cumulative[(y_ins - 1) * width + clamp_index(x_ins + 1, width)];
+                
+            cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+
+            //printf("Calculating pixel up (%d, %d), width %d \n", x_ins, y_ins, width);
+        }
+    }
+}
+
+static void compute_cumulative_down_triangle(const int *energy, int *cumulative, int width, int height, int x_bottom, int y_bottom, int height_tile) {
+    
+    for (int y = 0; y < height_tile; ++y) {
+        for (int x = -y; x <= y ; ++x) 
+        {
+            int x_ins = clamp_index(x_bottom + x, width);
+            int y_ins = clamp_index(y_bottom + y, height);
+
+            int left = cumulative[(y_ins - 1) * width + clamp_index(x_ins - 1, width)];
+            int mid = cumulative[(y_ins - 1) * width + x_ins];
+            int right = cumulative[(y_ins - 1) * width + clamp_index(x_ins + 1, width)];
+            
+            cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+
+            //printf("Calculating pixel down (%d, %d), width %d \n", x_ins, y_ins, width);
+        }
+    }
+}
+
+static void compute_cumulative_triangle_parallel(const int *energy, int *cumulative, int width, int height) {
+
+    #pragma omp for schedule(static)
+    for (int x = 0; x < width; ++x) {
+        cumulative[x] = energy[x];
+    }
+
+    int height_tiles = 6; 
+
+    for (int y = 1; y < height; y += height_tiles) {
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
+            compute_cumulative_up_triangle(energy, cumulative, width, height, x, y + height_tiles - 1, height_tiles);
+        }
+
+
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width; x += 2 * height_tiles){
+            compute_cumulative_down_triangle(energy, cumulative, width, height, x + height_tiles, y, height_tiles);
+        }
+    }
+}
+
+
+
+//------------------------
+
+static void compute_cumulative_up_triangle_reversed(const int *energy, int *cumulative, int width, int height, int x_top, int y_top, int height_tile) {
+    for (int y = height_tile - 1; y >= 0; --y) {
+        for (int x = -y; x <= y; ++x) {
+            int x_ins = clamp_index(x_top + x, width);
+            int y_ins = clamp_index(y_top + y, height);  // going downward in coords but upward in logic
+
+            int left  = cumulative[(y_ins + 1) * width + clamp_index(x_ins - 1, width)];
+            int mid   = cumulative[(y_ins + 1) * width + x_ins];
+            int right = cumulative[(y_ins + 1) * width + clamp_index(x_ins + 1, width)];
+
+            cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+        }
+    }
+}
+
+static void compute_cumulative_down_triangle_reversed(const int *energy, int *cumulative, int width, int height, int x_bottom, int y_bottom, int height_tile) {
+    for (int y = 0; y < height_tile; ++y) {
+        for (int x = -y; x <= y; ++x) {
+            int x_ins = clamp_index(x_bottom + x, width);
+            int y_ins = clamp_index(y_bottom - y, height);  // going upward in image
+
+            int left  = cumulative[(y_ins + 1) * width + clamp_index(x_ins - 1, width)];
+            int mid   = cumulative[(y_ins + 1) * width + x_ins];
+            int right = cumulative[(y_ins + 1) * width + clamp_index(x_ins + 1, width)];
+
+            cumulative[y_ins * width + x_ins] = energy[y_ins * width + x_ins] + min3(left, mid, right);
+        }
+    }
+}
+
+
+// Join at mid_y: sum top-down and best bottom-up neighbor for each cell
+static int compute_join_midpoint(const int *cumulative, int *join_row, int width, int mid_y) {
+    
+    for (int x = 0; x < width; ++x) {
+        int top_val     = cumulative[mid_y * width + x];
+        int bot_left    = cumulative[(mid_y + 1) * width + clamp_index(x - 1, width)];
+        int bot_mid     = cumulative[(mid_y + 1) * width + x];
+        int bot_right   = cumulative[(mid_y + 1) * width + clamp_index(x + 1, width)];
+        join_row[x]     = top_val + min3(bot_left, bot_mid, bot_right);
+    }
+    // implicit barrier here — all join_row values ready before we find the minimum
+
+    // Find the x with minimum total energy at the join row (sequential, width is small relative to height)
+    int best_x = 0;
+    for (int x = 1; x < width; ++x) {
+        if (join_row[x] < join_row[best_x]) {
+            best_x = x;
+        }
+    }
+    return best_x;
+}
+
+
+static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumulative, int width, int height) {
+
+    int mid_y = height / 2;
+    int height_tiles = 6;
+
+    #pragma omp for schedule(static)
+    for (int x = 0; x < width; ++x) {
+        cumulative[x] = energy[x];
+        cumulative[(height - 1) * width + x] = energy[(height - 1) * width + x];
+    }
+
+    for (int y = 1; y < mid_y; y += height_tiles) {
+
+        // top half 
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
+            compute_cumulative_up_triangle(energy, cumulative, width, mid_y, x, y + height_tiles - 1, height_tiles);
+        }
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width; x += 2 * height_tiles) {
+            compute_cumulative_down_triangle(energy, cumulative, width, mid_y, x + height_tiles, y, height_tiles);
+        }
+
+        // Symmetric y index for the bottom half wave
+        int y_bot = (height - 1) - y;
+
+        // bottom half 
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
+            compute_cumulative_up_triangle_reversed(energy, cumulative, width, height, x, y_bot - height_tiles + 1, height_tiles);
+        }
+        #pragma omp for schedule(static)
+        for (int x = 0; x < width; x += 2 * height_tiles) {
+            compute_cumulative_down_triangle_reversed(energy, cumulative, width, height, x + height_tiles, y_bot, height_tiles);
+        }
+    }
+
+    compute_join_midpoint(cumulative, cumulative + (mid_y * width), width, mid_y);
+}
+
+
+static void backtrack_seam_double(const int *cumulative, int width, int height, int start_x, int mid_y, int *seam_path) {
+
+    // Seed the midpoint
+    seam_path[mid_y] = start_x;
+
+    // Top half (mid_y -> 0) and bottom half (mid_y -> height-1) run in parallel.
+    // They are fully independent: top walks upward, bottom walks downward.
+    // Each is sequential in its own direction, so we use omp sections here —
+    // these are two single-threaded walks, not data-parallel loops.
+    #pragma omp sections
+    {
+        #pragma omp section
+        {
+            // --- Backtrack upward from mid_y to 0 ---
+            for (int y = mid_y - 1; y >= 0; --y) {
+                int prev_x  = seam_path[y + 1];
+                int left    = clamp_index(prev_x - 1, width);
+                int mid     = prev_x;
+                int right   = clamp_index(prev_x + 1, width);
+
+                int best_x     = left;
+                int best_value = cumulative[y * width + left];
+
+                int mid_value = cumulative[y * width + mid];
+                if (mid_value < best_value) { best_value = mid_value; best_x = mid; }
+
+                int right_value = cumulative[y * width + right];
+                if (right_value < best_value) { best_x = right; }
+
+                seam_path[y] = best_x;
+            }
+        }
+
+        #pragma omp section
+        {
+            // --- Backtrack downward from mid_y to height-1 ---
+            // The bottom cumulative was built upward (each cell depends on row below),
+            // so backtracking goes downward: at row y, look at row y+1 for best neighbor.
+            for (int y = mid_y + 1; y < height; ++y) {
+                int prev_x  = seam_path[y - 1];
+                int left    = clamp_index(prev_x - 1, width);
+                int mid     = prev_x;
+                int right   = clamp_index(prev_x + 1, width);
+
+                int best_x     = left;
+                int best_value = cumulative[y * width + left];
+
+                int mid_value = cumulative[y * width + mid];
+                if (mid_value < best_value) { best_value = mid_value; best_x = mid; }
+
+                int right_value = cumulative[y * width + right];
+                if (right_value < best_value) { best_x = right; }
+
+                seam_path[y] = best_x;
+            }
+        }
+    }
+}
+
+
+//-----------------------
+
+
+
+
+
 
 static void compute_cumulative_basic_parallel(const int *energy, int *cumulative, int width, int height) {
     #pragma omp parallel
@@ -215,7 +480,7 @@ static void compute_cumulative_basic_parallel(const int *energy, int *cumulative
                 int left = cumulative[(y - 1) * width + clamp_index(x - 1, width)];
                 int mid = cumulative[(y - 1) * width + x];
                 int right = cumulative[(y - 1) * width + clamp_index(x + 1, width)];
-                cumulative[y * width + x] = saturating_add_nonnegative(energy[y * width + x], min3(left, mid, right));
+                cumulative[y * width + x] = energy[y * width + x] + min3(left, mid, right);
             }
         }
     }
@@ -452,9 +717,60 @@ static double carve_vertical_seams(
     int channels,
     int seams_to_remove,
     int num_threads,
-    int use_parallel,
-    int *final_width,
-    int use_greedy_seam_removal
+    SeamCarveMode mode,
+    int *final_width
+);
+
+static double benchmark_carve_mode(
+    const Image *image,
+    int seams_to_remove,
+    int runs,
+    SeamCarveMode mode,
+    int num_threads
+) {
+    double elapsed_sum = 0.0;
+
+    for (int run = 0; run < runs; ++run) {
+        unsigned char *work = copy_image_data(image);
+        int final_width = image->width;
+        double elapsed;
+
+        if (work == NULL) {
+            fprintf(stderr, "Allocation failed while copying image for %s benchmark\n", seam_carve_mode_name(mode));
+            return -1.0;
+        }
+
+        elapsed = carve_vertical_seams(
+            work,
+            image->stride,
+            image->height,
+            image->channels,
+            seams_to_remove,
+            num_threads,
+            mode,
+            &final_width
+        );
+        free(work);
+
+        if (elapsed < 0.0) {
+            return -1.0;
+        }
+
+        elapsed_sum += elapsed;
+    }
+
+    return elapsed_sum / (double)runs;
+}
+
+static double carve_vertical_seams(
+    unsigned char *image,
+    int stride,
+    int height,
+    int channels,
+    int seams_to_remove,
+    int num_threads,
+    SeamCarveMode mode,
+    int *final_width
 ) {
     int width = stride;
     size_t max_pixels = (size_t)stride * (size_t)height;
@@ -475,7 +791,8 @@ static double carve_vertical_seams(
     seam_path = malloc((size_t)height * sizeof(int));
     removed_mask = malloc(max_pixels * sizeof(unsigned char));
 
-    if (energy == NULL || cumulative == NULL || seam_path == NULL || removed_mask == NULL) {
+
+    if (energy == NULL || cumulative == NULL || seam_path == NULL) {
         fprintf(stderr, "Allocation failed while preparing seam carving buffers\n");
         free(energy);
         free(cumulative);
@@ -485,13 +802,13 @@ static double carve_vertical_seams(
         return -1.0;
     }
 
-    if (use_parallel) {
+    if (seam_carve_mode_uses_parallel(mode)) {
         omp_set_num_threads(num_threads);
     }
 
     double t_start = omp_get_wtime();
 
-    if (use_greedy_seam_removal) {
+    if (seam_carve_mode_uses_greedy(mode)) {
         const int batch_size = 16;
 
         while (seams_to_remove > 0 && width > 1) {
@@ -505,7 +822,7 @@ static double carve_vertical_seams(
                 batch_limit = width - 1;
             }
 
-            if (use_parallel) {
+            if (seam_carve_mode_uses_parallel(mode)) {
                 compute_energy_parallel(image, stride, width, height, channels, energy);
             } else {
                 compute_energy_sequential(image, stride, width, height, channels, energy);
@@ -525,8 +842,10 @@ static double carve_vertical_seams(
             );
 
             if (removed <= 0) {
-                if (use_parallel) {
+                if (mode == SEAM_CARVE_MODE_BASIC_PARALLEL) {
                     compute_cumulative_basic_parallel(energy, cumulative, width, height);
+                } else if (mode == SEAM_CARVE_MODE_TRIANGULAR_PARALLEL) {
+                    compute_cumulative_triangle_parallel(energy, cumulative, width, height);
                 } else {
                     compute_cumulative_sequential(energy, cumulative, width, height);
                 }
@@ -539,10 +858,15 @@ static double carve_vertical_seams(
             seams_to_remove -= removed;
         }
     } else {
-        for (int seam = 0; seam < seams_to_remove && width > 1; ++seam) {
-            if (use_parallel) {
+        for (int seam = 0; seam < seams_to_remove; ++seam) {
+            if (mode == SEAM_CARVE_MODE_BASIC_PARALLEL) {
                 compute_energy_parallel(image, stride, width, height, channels, energy);
                 compute_cumulative_basic_parallel(energy, cumulative, width, height);
+                trace_seam_parallel(cumulative, width, height, seam_path);
+                remove_seam_copy_parallel(image, stride, width, height, channels, seam_path);
+            } else if (mode == SEAM_CARVE_MODE_TRIANGULAR_PARALLEL) {
+                compute_energy_parallel(image, stride, width, height, channels, energy);
+                compute_cumulative_triangle_parallel(energy, cumulative, width, height);
                 trace_seam_parallel(cumulative, width, height, seam_path);
                 remove_seam_copy_parallel(image, stride, width, height, channels, seam_path);
             } else {
@@ -565,7 +889,9 @@ static double carve_vertical_seams(
 
     *final_width = width;
     return elapsed;
+    
 }
+
 
 static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int runs, const char *csv_path) {
     FILE *csv = NULL;
@@ -577,7 +903,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             fprintf(stderr, "Failed to open CSV output file %s\n", csv_path);
             return 1;
         }
-        fprintf(csv, "image,width,height,seams,runs,threads,t_seq_avg_sec,t_par_avg_sec,speedup\n");
+        fprintf(csv, "image,solution,width,height,seams,runs,threads,avg_sec,speedup_vs_sequential\n");
     }
 
     printf("Benchmark settings: seams=%d, runs=%d\n", seams_to_remove, runs);
@@ -600,37 +926,16 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             seams_for_this_image = image.width - 1;
         }
 
-        double seq_sum = 0.0;
-        for (int run = 0; run < runs; ++run) {
-            unsigned char *work = copy_image_data(&image);
-            int final_width = image.width;
-            double elapsed;
+        double t_seq = benchmark_carve_mode(
+            &image,
+            seams_for_this_image,
+            runs,
+            SEAM_CARVE_MODE_SEQUENTIAL,
+            1
+        );
 
-            if (work == NULL) {
-                fprintf(stderr, "Allocation failed while copying image for sequential benchmark\n");
-                failed = 1;
-                break;
-            }
-
-            elapsed = carve_vertical_seams(
-                work,
-                image.stride,
-                image.height,
-                image.channels,
-                seams_for_this_image,
-                1,
-                0,
-                &final_width,
-                0
-            );
-            free(work);
-
-            if (elapsed < 0.0) {
-                failed = 1;
-                break;
-            }
-
-            seq_sum += elapsed;
+        if (t_seq < 0.0) {
+            failed = 1;
         }
 
         if (failed) {
@@ -638,69 +943,59 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             continue;
         }
 
-        double t_seq = seq_sum / (double)runs;
-
         printf("\nImage: %s (%dx%d, channels=%d), seams=%d\n",
                kBenchmarkImages[i], image.width, image.height, image.channels, seams_for_this_image);
         printf("Sequential average: %.6f s\n", t_seq);
 
-        for (int t = 0; t < ARRAY_SIZE(kThreadCounts); ++t) {
-            int threads = kThreadCounts[t];
-            double par_sum = 0.0;
+        const SeamCarveMode solution_modes[] = {
+            SEAM_CARVE_MODE_BASIC_PARALLEL,
+            SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
+            SEAM_CARVE_MODE_GREEDY_PARALLEL
+        };
 
-            for (int run = 0; run < runs; ++run) {
-                unsigned char *work = copy_image_data(&image);
-                int final_width = image.width;
-                double elapsed;
+        for (int mode_index = 0; mode_index < ARRAY_SIZE(solution_modes); ++mode_index) {
+            SeamCarveMode mode = solution_modes[mode_index];
 
-                if (work == NULL) {
-                    fprintf(stderr, "Allocation failed while copying image for parallel benchmark\n");
-                    failed = 1;
-                    break;
-                }
-
-                elapsed = carve_vertical_seams(
-                    work,
-                    image.stride,
-                    image.height,
-                    image.channels,
+            for (int t = 0; t < ARRAY_SIZE(kThreadCounts); ++t) {
+                int threads = kThreadCounts[t];
+                double avg_seconds = benchmark_carve_mode(
+                    &image,
                     seams_for_this_image,
-                    threads,
-                    1,
-                    &final_width,
-                    0
+                    runs,
+                    mode,
+                    threads
                 );
-                free(work);
 
-                if (elapsed < 0.0) {
+                if (avg_seconds < 0.0) {
                     failed = 1;
                     break;
                 }
 
-                par_sum += elapsed;
+                double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
+
+                printf("  %-20s threads=%2d  avg=%.6f s  speedup=%.3f\n",
+                       seam_carve_mode_name(mode),
+                       threads,
+                       avg_seconds,
+                       speedup);
+
+                if (csv != NULL) {
+                    fprintf(csv,
+                            "%s,%s,%d,%d,%d,%d,%d,%.9f,%.9f\n",
+                            kBenchmarkImages[i],
+                            seam_carve_mode_name(mode),
+                            image.width,
+                            image.height,
+                            seams_for_this_image,
+                            runs,
+                            threads,
+                            avg_seconds,
+                            speedup);
+                }
             }
 
             if (failed) {
                 break;
-            }
-
-            double t_par = par_sum / (double)runs;
-            double speedup = (t_par > 0.0) ? (t_seq / t_par) : 0.0;
-
-            printf("  threads=%2d  parallel_avg=%.6f s  speedup=%.3f\n", threads, t_par, speedup);
-
-            if (csv != NULL) {
-                fprintf(csv,
-                        "%s,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
-                        kBenchmarkImages[i],
-                        image.width,
-                        image.height,
-                        seams_for_this_image,
-                        runs,
-                        threads,
-                        t_seq,
-                        t_par,
-                        speedup);
             }
         }
 
@@ -725,7 +1020,8 @@ static void print_usage(const char *program) {
             program);
 }
 
-int main(int argc, char *argv[]) {
+
+int main(int argc, char *argv[]) {    
     if (argc >= 2 && strcmp(argv[1], "--benchmark") == 0) {
         int seams_to_remove = 128;
         int runs = 5;
@@ -733,6 +1029,8 @@ int main(int argc, char *argv[]) {
 
         if (argc < 3 || argc > 6) {
             print_usage(argv[0]);
+            
+            (argv[0]);
             return 1;
         }
 
@@ -778,6 +1076,7 @@ int main(int argc, char *argv[]) {
     }
 
     int final_width = image.width;
+
     double elapsed = carve_vertical_seams(
         image.data,
         image.stride,
@@ -785,9 +1084,8 @@ int main(int argc, char *argv[]) {
         image.channels,
         seams_effective,
         num_threads,
-        0,
-        &final_width,
-        0
+        SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
+        &final_width
     );
 
     if (elapsed < 0.0) {

@@ -619,7 +619,6 @@ static double carve_vertical_seams(
             //compute_cumulative_triangle_parallel(energy, cumulative, width, height);
             compute_cumulative_top_bottom_parallel(energy, cumulative, width, height);
             //trace_seam_parallel(cumulative, width, height, seam_path);
-            //backtrack_seam_double(cumulative, width, height, 0, height / 2, seam_path);
             int *join_row = malloc(width * sizeof(int));
             int best_x = compute_join_midpoint(cumulative, join_row, width, height / 2);
             backtrack_seam_double(cumulative, width, height, best_x, height / 2, seam_path);

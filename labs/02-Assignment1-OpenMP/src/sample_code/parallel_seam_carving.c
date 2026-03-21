@@ -891,7 +891,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             fprintf(stderr, "Failed to open CSV output file %s\n", csv_path);
             return 1;
         }
-        fprintf(csv, "image,solution,width,height,seams,runs,threads,avg_sec,speedup_vs_sequential\n");
+        fprintf(csv, "image,solution,width,height,seams,runs,threads,t_s_sec,t_p_sec,speedup\n");
     }
 
     printf("Benchmark settings: seams=%d, runs=%d\n", seams_to_remove, runs);
@@ -933,7 +933,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
         printf("\nImage: %s (%dx%d, channels=%d), seams=%d\n",
                kBenchmarkImages[i], image.width, image.height, image.channels, seams_for_this_image);
-        printf("Sequential average: %.6f s\n", t_seq);
+        printf("Sequential average (t_s): %.6f s\n", t_seq);
 
         const SeamCarveMode solution_modes[] = {
             SEAM_CARVE_MODE_BASIC_PARALLEL,
@@ -961,7 +961,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
                 double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
 
-                printf("  %-20s threads=%2d  avg=%.6f s  speedup=%.3f\n",
+                  printf("  %-20s threads=%2d  t_p=%.6f s  speedup=S=t_s/t_p=%.3f\n",
                        seam_carve_mode_name(mode),
                        threads,
                        avg_seconds,
@@ -969,7 +969,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
                 if (csv != NULL) {
                     fprintf(csv,
-                            "%s,%s,%d,%d,%d,%d,%d,%.9f,%.9f\n",
+                        "%s,%s,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
                             kBenchmarkImages[i],
                             seam_carve_mode_name(mode),
                             image.width,
@@ -977,6 +977,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
                             seams_for_this_image,
                             runs,
                             threads,
+                        t_seq,
                             avg_seconds,
                             speedup);
                 }

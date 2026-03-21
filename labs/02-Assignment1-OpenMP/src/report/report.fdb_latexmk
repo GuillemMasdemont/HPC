@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1774087611.72632 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" "report.pdf" "report" 1774087612.73862 0
-  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" 1774087611.46116 5088 2c5926dabcd82c0b3d6b696d9df22c10 ""
+["pdflatex"] 1774088259.36795 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" "report.pdf" "report" 1774088260.30273 0
+  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" 1774088259.10399 2078 613d44fbcda58e24abf0f172b6224406 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1136849721 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc" 1276641224 6938 5135be6a8802f13a7faf296d1959a1ab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -10,7 +10,6 @@
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8t.tfm" 1377991452 992 33850081be99bee4bb0c1c617edf8cd3 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8y.tfm" 1377991452 1616 f23ae44dc81ec9a69c1c05004062565d ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7t.tfm" 1377991452 824 e84dc8fd7ce1699c13a4cf301fc14b98 ""
-  "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7v.tfm" 1377991452 1716 e946b26d80be2b9854dce098cc7d4fd7 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7y.tfm" 1377991452 1292 7fc44b79287974dee41abfbedfb7865b ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr8t.tfm" 1377991452 992 b635bd892c5f064cc4c7d172e94c7fc9 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr8y.tfm" 1377991452 1604 95b3dfa8282f3b7807ebdf0f30ea7999 ""
@@ -30,11 +29,9 @@
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchri8a.pfb" 1136849748 35118 12369bddf1a14581d11fcdbf86619250 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb" 1215737283 169670 48d12e69c9a3b23c81f6d703ccbd4554 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb" 1377991452 7182 30fbf4d976bdd2f8e5e608bba0e9a74d ""
-  "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7v.pfb" 1377991452 33357 275501d693c4e1260cf31ec6e7949f38 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb" 1377991452 26162 bd4b2cdc5229167b72fc13a07768bc17 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchb8t.vf" 1377991452 2224 1b7f397f83969596ba27f849a2540080 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7t.vf" 1377991452 976 862fa3ae193f69aabcce6a8c0b3499c2 ""
-  "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7v.vf" 1377991452 1612 6fe703a6a685d4c4f84414e8687e1785 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7y.vf" 1377991452 836 7c23d0fba34243bfaba30e51eed87f22 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr8t.vf" 1377991452 2224 103bf0af1df04f28e57b118a8f5d1915 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchri7m.vf" 1377991452 1148 f010126386d8bba99c9c766ac714b8b8 ""
@@ -104,9 +101,9 @@
   "/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1764491816 5467155 19efa205003f9ecad95fbbaa6ff24da1 ""
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1764491721 3345742 9759ea87a28497a5108231f989ca3eaf ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
-  "report.aux" 1774087612.61316 3207 07b45afe161ac4210cdad68b116c0865 "pdflatex"
-  "report.out" 1774087612.61393 4062 5bc4300fe00a162534d843e9a3d4d8a7 "pdflatex"
-  "report.tex" 1774087611.46116 5088 2c5926dabcd82c0b3d6b696d9df22c10 ""
+  "report.aux" 1774088260.19223 162 55205a9e8a8eca30d36afb389b0617bf "pdflatex"
+  "report.out" 1774088259.90503 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "report.tex" 1774088259.10399 2078 613d44fbcda58e24abf0f172b6224406 ""
   (generated)
   "report.aux"
   "report.log"

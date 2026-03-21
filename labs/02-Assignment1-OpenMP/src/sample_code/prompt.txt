@@ -1,0 +1,13 @@
+# Sequential baseline
+./parallel_seam_carving ../test_images/720x480.png out.png 250 1 sequential
+
+# Basic parallel (row-level only)
+./parallel_seam_carving ../test_images/720x480.png out.png 250 8 basic_parallel
+
+#triangle parallel up and down and one way: 
+./parallel_seam_carving ../test_images/720x480.png out_tri.png     250 8 triangular_parallel
+./parallel_seam_carving ../test_images/720x480.png out_tri_ow.png  250 8 triangular_one_way_parallel
+
+
+# Greedy batch
+./parallel_seam_carving ../test_images/720x480.png out.png 250 8 greedy_parallel

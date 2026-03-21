@@ -1,0 +1,50 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[charter]{mathdesign} % Elegant, readable font
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\makeatletter
+\renewcommand{\maketitle}{
+  \begin{flushleft}
+    {\huge \textbf{\@title} \par}
+    \vspace{0.5cm}
+    {\large \@author \par}
+    \vspace{0.2cm}
+    {\@date \par}
+    \vspace{1cm}
+    \hrule
+  \end{flushleft}
+}
+\makeatother
+
+\title{\LARGE\textbf{Parallel Seam Carving using OpenMP} \\[-0.2em]
+    \large Assignment 1 --- High Performance Computing}
+\author{
+    Plabon Shaha and Guillem Masdemont \\ 
+    \small University of Ljubljana, Spring Semester, EMAI Cohort 25--27 
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{enumerate}[label={\textbf{Exercise \arabic*:}}]
+  \item We parallelize all algorithm steps with OpenMP, specifically using the basic parallel approach for cumulative energy and parallelizing only the copying phase of seam removal. All code is compiled with \texttt{-O3} optimizations. 
+
+Execution times are measured across five image resolutions ($720 \times 480$ to $7680 \times 4320$) using 1, 2, 4, 8, 16, and 32 threads. Each test case requires at least 5 runs removing 128 seams to calculate average timings. Performance is evaluated via speed-up, defined as $S = \frac{t_s}{t_p}$, where $t_s$ is the sequential runtime and $t_p$ is the parallel runtime.
+
+
+  \item We implement greedy seam removal to enable the parallel processing of multiple seams and we analyze the trade-offs between execution speed and final image quality. For each algorithm step and image resolution, we perform a scaling study to determine the optimal thread and core counts.
+  
+  We enhance the energy calculation phase by implementing the improved triangle-based cumulative energy approach. Furthermore, we further improve the algorithm by running the algorithm from top and bottom and the same time and joining the values in the middle. 
+\end{enumerate}
+
+\end{document}

@@ -17,7 +17,7 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK #number of threads inside your progr
 module load numactl
 
 # Compile
-gcc -O3 -lm -lnuma --openmp seam_carving.c -o seam_carving
+gcc -O3 -fopenmp seam_carving.c -lm -lnuma -o seam_carving
 
 # Run
-srun  seam_carving
+srun ./seam_carving

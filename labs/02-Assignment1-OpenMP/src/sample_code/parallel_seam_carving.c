@@ -50,7 +50,8 @@ static const char *kBenchmarkImages[] = {
     "7680x4320.png"
 };
 
-static const int kThreadCounts[] = {1, 2, 4, 8, 16, 32};
+static const int kThreadCounts[] = {1, 2, 4, 8, 16};
+static const int kHeightTiles[] = {4, 6, 8, 16};
 
 static const char *seam_carve_mode_name(SeamCarveMode mode) {
     switch (mode) {
@@ -275,14 +276,16 @@ static void compute_cumulative_down_triangle(const int *energy, int *cumulative,
     }
 }
 
-static void compute_cumulative_triangle_parallel(const int *energy, int *cumulative, int width, int height) {
+static void compute_cumulative_triangle_parallel(const int *energy, int *cumulative, int width, int height, int height_tiles) {
+
+    if (height_tiles <= 0) {
+        height_tiles = 1;
+    }
 
     #pragma omp for schedule(static)
     for (int x = 0; x < width; ++x) {
         cumulative[x] = energy[x];
     }
-
-    int height_tiles = 1; 
 
     for (int y = 1; y < height; y += height_tiles) {
         #pragma omp for schedule(static)
@@ -355,10 +358,13 @@ static int compute_join_midpoint(const int *cumulative, int *join_row, int width
 }
 
 
-static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumulative, int width, int height) {
+static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumulative, int width, int height, int height_tiles) {
 
     int mid_y = height / 2;
-    int height_tiles = 4;
+
+    if (height_tiles <= 0) {
+        height_tiles = 1;
+    }
 
     #pragma omp for schedule(static)
     for (int x = 0; x < width; ++x) {
@@ -706,6 +712,7 @@ static double carve_vertical_seams(
     int channels,
     int seams_to_remove,
     int num_threads,
+    int height_tiles,
     SeamCarveMode mode,
     int *final_width
 );
@@ -714,6 +721,7 @@ static double benchmark_carve_mode(
     const Image *image,
     int seams_to_remove,
     int runs,
+    int height_tiles,
     SeamCarveMode mode,
     int num_threads
 ) {
@@ -736,6 +744,7 @@ static double benchmark_carve_mode(
             image->channels,
             seams_to_remove,
             num_threads,
+            height_tiles,
             mode,
             &final_width
         );
@@ -758,6 +767,7 @@ static double carve_vertical_seams(
     int channels,
     int seams_to_remove,
     int num_threads,
+    int height_tiles,
     SeamCarveMode mode,
     int *final_width
 ) {
@@ -838,7 +848,7 @@ static double carve_vertical_seams(
                 int best_x = 0;
                 #pragma omp parallel
                 {
-                    compute_cumulative_top_bottom_parallel(energy, cumulative, width, height);
+                    compute_cumulative_top_bottom_parallel(energy, cumulative, width, height, height_tiles);
                     #pragma omp single
                     {
                         best_x = compute_join_midpoint(cumulative, join_row, width, height / 2);
@@ -852,7 +862,7 @@ static double carve_vertical_seams(
                 compute_energy_parallel(image, stride, width, height, channels, energy);
                 #pragma omp parallel
                 {
-                    compute_cumulative_triangle_parallel(energy, cumulative, width, height);
+                    compute_cumulative_triangle_parallel(energy, cumulative, width, height, height_tiles);
                 }
                 trace_seam_parallel(cumulative, width, height, seam_path);
                 remove_seam_copy_parallel(image, stride, width, height, channels, seam_path);
@@ -891,7 +901,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             fprintf(stderr, "Failed to open CSV output file %s\n", csv_path);
             return 1;
         }
-        fprintf(csv, "image,solution,width,height,seams,runs,threads,t_s_sec,t_p_sec,speedup\n");
+        fprintf(csv, "image,solution,width,height,seams,runs,height_tiles,threads,t_s_sec,t_p_sec,speedup\n");
     }
 
     printf("Benchmark settings: seams=%d, runs=%d\n", seams_to_remove, runs);
@@ -918,6 +928,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             &image,
             seams_for_this_image,
             runs,
+            0,
             SEAM_CARVE_MODE_SEQUENTIAL,
             1
         );
@@ -937,13 +948,14 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
         if (csv != NULL) {
             fprintf(csv,
-                "%s,%s,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                "%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
                 kBenchmarkImages[i],
                 seam_carve_mode_name(SEAM_CARVE_MODE_SEQUENTIAL),
                 image.width,
                 image.height,
                 seams_for_this_image,
                 runs,
+                0,
                 1,
                 t_seq,
                 t_seq,
@@ -959,47 +971,103 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
         for (int mode_index = 0; mode_index < ARRAY_SIZE(solution_modes); ++mode_index) {
             SeamCarveMode mode = solution_modes[mode_index];
 
-            for (int t = 0; t < ARRAY_SIZE(kThreadCounts); ++t) {
-                int threads = kThreadCounts[t];
-                double avg_seconds = benchmark_carve_mode(
-                    &image,
-                    seams_for_this_image,
-                    runs,
-                    mode,
-                    threads
-                );
+            if (mode == SEAM_CARVE_MODE_TRIANGULAR_PARALLEL) {
+                for (int ht = 0; ht < ARRAY_SIZE(kHeightTiles); ++ht) {
+                    int height_tiles = kHeightTiles[ht];
 
-                if (avg_seconds < 0.0) {
-                    failed = 1;
-                    fprintf(stderr,
-                        "Benchmark failed for %s with %s threads=%d\n",
-                        kBenchmarkImages[i],
-                        seam_carve_mode_name(mode),
-                        threads);
-                    continue;
+                    for (int t = 0; t < ARRAY_SIZE(kThreadCounts); ++t) {
+                        int threads = kThreadCounts[t];
+                        double avg_seconds = benchmark_carve_mode(
+                            &image,
+                            seams_for_this_image,
+                            runs,
+                            height_tiles,
+                            mode,
+                            threads
+                        );
+
+                        if (avg_seconds < 0.0) {
+                            failed = 1;
+                            fprintf(stderr,
+                                "Benchmark failed for %s with %s height_tiles=%d threads=%d\n",
+                                kBenchmarkImages[i],
+                                seam_carve_mode_name(mode),
+                                height_tiles,
+                                threads);
+                            continue;
+                        }
+
+                        double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
+
+                        printf("  %-20s ht=%2d threads=%2d  t_p=%.6f s  speedup=S=t_s/t_p=%.3f\n",
+                            seam_carve_mode_name(mode),
+                            height_tiles,
+                            threads,
+                            avg_seconds,
+                            speedup);
+
+                        if (csv != NULL) {
+                            fprintf(csv,
+                                "%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                                kBenchmarkImages[i],
+                                seam_carve_mode_name(mode),
+                                image.width,
+                                image.height,
+                                seams_for_this_image,
+                                runs,
+                                height_tiles,
+                                threads,
+                                t_seq,
+                                avg_seconds,
+                                speedup);
+                        }
+                    }
                 }
+            } else {
+                for (int t = 0; t < ARRAY_SIZE(kThreadCounts); ++t) {
+                    int threads = kThreadCounts[t];
+                    double avg_seconds = benchmark_carve_mode(
+                        &image,
+                        seams_for_this_image,
+                        runs,
+                        0,
+                        mode,
+                        threads
+                    );
 
-                double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
+                    if (avg_seconds < 0.0) {
+                        failed = 1;
+                        fprintf(stderr,
+                            "Benchmark failed for %s with %s threads=%d\n",
+                            kBenchmarkImages[i],
+                            seam_carve_mode_name(mode),
+                            threads);
+                        continue;
+                    }
 
-                  printf("  %-20s threads=%2d  t_p=%.6f s  speedup=S=t_s/t_p=%.3f\n",
-                       seam_carve_mode_name(mode),
-                       threads,
-                       avg_seconds,
-                       speedup);
+                    double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
 
-                if (csv != NULL) {
-                    fprintf(csv,
-                        "%s,%s,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                    printf("  %-20s threads=%2d  t_p=%.6f s  speedup=S=t_s/t_p=%.3f\n",
+                        seam_carve_mode_name(mode),
+                        threads,
+                        avg_seconds,
+                        speedup);
+
+                    if (csv != NULL) {
+                        fprintf(csv,
+                            "%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
                             kBenchmarkImages[i],
                             seam_carve_mode_name(mode),
                             image.width,
                             image.height,
                             seams_for_this_image,
                             runs,
+                            0,
                             threads,
-                        t_seq,
+                            t_seq,
                             avg_seconds,
                             speedup);
+                    }
                 }
             }
         }
@@ -1089,6 +1157,7 @@ int main(int argc, char *argv[]) {
         image.channels,
         seams_effective,
         num_threads,
+        4,
         mode,
         &final_width
     );

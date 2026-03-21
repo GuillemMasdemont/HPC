@@ -9,6 +9,8 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{hyperref}
+\usepackage{graphicx} % Required for inserting images (put this in your preamble)
+
 
 \makeatletter
 \renewcommand{\maketitle}{
@@ -45,6 +47,14 @@ Execution times are measured across five image resolutions ($720 \times 480$ to 
   \item We implement greedy seam removal to enable the parallel processing of multiple seams and we analyze the trade-offs between execution speed and final image quality. For each algorithm step and image resolution, we perform a scaling study to determine the optimal thread and core counts.
   
   We enhance the energy calculation phase by implementing the improved triangle-based cumulative energy approach. Furthermore, we further improve the algorithm by running the algorithm from top and bottom and the same time and joining the values in the middle. 
+
+  \begin{figure}[h]
+      \centering
+      \includegraphics[width=0.8\textwidth]{./images/IMG_0034.jpg}
+      \caption{This is the description that appears under your image.}
+      \label{fig:my_data_plot}
+  \end{figure}
+
 \end{enumerate}
 
 \end{document}

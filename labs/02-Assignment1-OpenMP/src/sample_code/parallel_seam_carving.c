@@ -935,6 +935,21 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
                kBenchmarkImages[i], image.width, image.height, image.channels, seams_for_this_image);
         printf("Sequential average (t_s): %.6f s\n", t_seq);
 
+        if (csv != NULL) {
+            fprintf(csv,
+                "%s,%s,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                kBenchmarkImages[i],
+                seam_carve_mode_name(SEAM_CARVE_MODE_SEQUENTIAL),
+                image.width,
+                image.height,
+                seams_for_this_image,
+                runs,
+                1,
+                t_seq,
+                t_seq,
+                1.0);
+        }
+
         const SeamCarveMode solution_modes[] = {
             SEAM_CARVE_MODE_BASIC_PARALLEL,
             SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
@@ -956,7 +971,12 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
                 if (avg_seconds < 0.0) {
                     failed = 1;
-                    break;
+                    fprintf(stderr,
+                        "Benchmark failed for %s with %s threads=%d\n",
+                        kBenchmarkImages[i],
+                        seam_carve_mode_name(mode),
+                        threads);
+                    continue;
                 }
 
                 double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
@@ -981,10 +1001,6 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
                             avg_seconds,
                             speedup);
                 }
-            }
-
-            if (failed) {
-                break;
             }
         }
 
@@ -1073,7 +1089,7 @@ int main(int argc, char *argv[]) {
         image.channels,
         seams_effective,
         num_threads,
-        SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
+        mode,
         &final_width
     );
 

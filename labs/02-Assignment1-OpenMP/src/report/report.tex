@@ -9,6 +9,8 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{hyperref}
+\usepackage{graphicx} % Required for inserting images (put this in your preamble)
+
 
 \makeatletter
 \renewcommand{\maketitle}{
@@ -44,7 +46,44 @@ Execution times are measured across five image resolutions ($720 \times 480$ to 
 
   \item We implement greedy seam removal to enable the parallel processing of multiple seams and we analyze the trade-offs between execution speed and final image quality. For each algorithm step and image resolution, we perform a scaling study to determine the optimal thread and core counts.
   
-  We enhance the energy calculation phase by implementing the improved triangle-based cumulative energy approach. Furthermore, we further improve the algorithm by running the algorithm from top and bottom and the same time and joining the values in the middle. 
+\begin{enumerate}
+  \item   We proceed now to implement triangle-based cumulative energy approach. We compared two tiling strategies where the image is divided into alternating upward and downward triangular blocks.
+  \begin{enumerate}
+      \item \textbf{Case 1 ($Y \pm 1$):} The tiles have a horizontal tip of two blocks. This approach present the pink dots not uniformly distributed. 
+      
+      \item \textbf{Case 2 ($Y \pm 2$):} The tiles have a single-block tip. This approach present the pink dots uniformly distributed. 
+  \end{enumerate}
+
+  Computationally, both options present similar performance. However, in this study the second approach (single-block tip) seems more suitable because when the height of the triangle is $k=1$, we fully return to the standard sequential approach, and, hence, we have a robust baseline to compare. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./images/IMG_0034.jpg}
+    \caption{Comparison of wavefront tiling strategies for parallel seam carving. Case 1 (top) shows a non-uniform distribution of synchronization points (pink dots) due to a two-block tip. Case 2 (bottom) uses a single-block tip and uniform distribution of pink dots.}
+    \label{fig:tiling_strategies}
+\end{figure}
+
+\pagebreak 
+
+
+\item To optimize the seam selection process, we modified the aforementioned traditional dynamic programming approach by implementing a bidirectional energy accumulation. 
+
+The image is bisected at $\bar{y} = \lceil h/2 \rceil$, we execute the parallel triangular approach in parallel, on starting on the top and the other on the bottom as shown in image \ref{fig:midpoint_sync}. The final seam is reconstructed by identifying the optimal midpoint $\hat{x}$ via the formula 
+\begin{equation}
+  \hat{x} = \underset{i}{\operatorname{argmin}} \left( E(x_i, \bar{y}) + \min \left( E(x_{i-1}, \bar{y}), E(x_i, \bar{y}), E(x_{i+1}, \bar{y}) \right) \right)
+\end{equation}
+and performing two simultaneous tracebacks, one moving upward and one moving downward from the select $\hat{x_i}$. 
+
+
+\begin{figure}[h]
+      \centering
+      \includegraphics[width=0.8\textwidth]{./images/IMG_0035.png}
+      \caption{Bidirectional seam carving synchronization at the image midpoint $\bar{y}$. The upward and downward wavefronts (red arrows) converge at the central row, where the optimal transition point $\hat{x}$ is determined by minimizing the combined energy from both computed halves.}
+      \label{fig:midpoint_sync}
+  \end{figure}
+
+\end{enumerate}
+
 \end{enumerate}
 
 \end{document}

@@ -7,4 +7,5 @@ gcc -O3 -lm -Xpreprocessor -fopenmp \
 -lomp parallel_seam_carving.c -o parallel_seam_carving
 
 # Run
-./parallel_seam_carving ../test_images/720x480.png parallel_out.png 180 1 triangular_parallel
+./parallel_seam_carving ../test_images/720x480.png parallel_out.png 500 1 basic_parallel
+./parallel_seam_carving ../test_images/720x480.png greedy_out.png 500 1 greedy_parallel

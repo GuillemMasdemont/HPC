@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # 1. Load the benchmark data
 # Adjust path as necessary (e.g., 'benchmark_results.csv')
-df = pd.read_csv('../data/benchmark_4cores.csv')
+df = pd.read_csv('../data/benchmark_4threads.csv')
 
 
 # 2. Get the unique images (Total of 5)
@@ -70,9 +70,9 @@ for i, img in enumerate(images):
 # 4. Handle the 6th subplot (index 5) - Use it for the Legend
 legend_ax = axes[5]
 legend_ax.axis('off') # Hide the axis lines and labels
-legend_ax.legend(handles, labels, loc='center', fontsize='large', frameon=True, title="All Solutions")
+legend_ax.legend(handles, labels, loc='center', fontsize='x-large', frameon=True, title="All Solutions")
 
 # 5. Finalize layout and save
 plt.tight_layout()
-plt.savefig('merged_benchmark_plots.png', dpi=300)
+plt.savefig('image_performance_for_fixed_cores', dpi=300)
 #plt.show()

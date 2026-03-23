@@ -37,7 +37,7 @@ typedef struct {
 typedef enum {
     SEAM_CARVE_MODE_SEQUENTIAL = 0,
     SEAM_CARVE_MODE_BASIC_PARALLEL,
-    SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
+    SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL,
     SEAM_CARVE_MODE_TRIANGULAR_ONE_WAY_PARALLEL,  // ← add this
     SEAM_CARVE_MODE_GREEDY_PARALLEL
 } SeamCarveMode;
@@ -50,14 +50,15 @@ static const char *kBenchmarkImages[] = {
     "7680x4320.png"
 };
 
-static const int kThreadCounts[] = {1, 2, 4, 8, 16};
+static const int kThreadCounts[] = {1, 2, 4, 8, 16, 32};
 static const int kHeightTiles[] = {4, 6, 8, 16};
+static const int kGreedyBatchSizes[] = {0, 1, 2, 4, 8, 16, 32, 64};
 
 static const char *seam_carve_mode_name(SeamCarveMode mode) {
     switch (mode) {
         case SEAM_CARVE_MODE_SEQUENTIAL:                return "sequential";
         case SEAM_CARVE_MODE_BASIC_PARALLEL:            return "basic_parallel";
-        case SEAM_CARVE_MODE_TRIANGULAR_PARALLEL:       return "triangular_parallel";
+        case SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL:       return "top_bottom_parallel";
         case SEAM_CARVE_MODE_TRIANGULAR_ONE_WAY_PARALLEL: return "triangular_one_way_parallel"; 
         case SEAM_CARVE_MODE_GREEDY_PARALLEL:           return "greedy_parallel";
         default:                                        return "unknown";
@@ -720,6 +721,7 @@ static double carve_vertical_seams(
     int seams_to_remove,
     int num_threads,
     int height_tiles,
+    int greedy_batch_size,
     SeamCarveMode mode,
     int *final_width
 );
@@ -729,6 +731,7 @@ static double benchmark_carve_mode(
     int seams_to_remove,
     int runs,
     int height_tiles,
+    int greedy_batch_size,
     SeamCarveMode mode,
     int num_threads
 ) {
@@ -752,6 +755,7 @@ static double benchmark_carve_mode(
             seams_to_remove,
             num_threads,
             height_tiles,
+            greedy_batch_size,
             mode,
             &final_width
         );
@@ -775,6 +779,7 @@ static double carve_vertical_seams(
     int seams_to_remove,
     int num_threads,
     int height_tiles,
+    int greedy_batch_size,
     SeamCarveMode mode,
     int *final_width
 ) {
@@ -814,8 +819,10 @@ static double carve_vertical_seams(
     /* ------------------------------------------------------------------ */
     if (seam_carve_mode_uses_greedy(mode)) {
         while (seams_to_remove > 0 && width > 1) {
-            /* FIX 2: batch_size was undeclared — use all remaining seams  */
             int batch_limit = seams_to_remove;
+            if (greedy_batch_size > 0 && greedy_batch_size < batch_limit) {
+                batch_limit = greedy_batch_size;
+            }
             if (batch_limit > width - 1) batch_limit = width - 1;
 
             compute_energy_parallel(image, stride, width, height, channels, energy);
@@ -849,7 +856,7 @@ static double carve_vertical_seams(
                 trace_seam_parallel(cumulative, width, height, seam_path);
                 remove_seam_copy_parallel(image, stride, width, height, channels, seam_path);
 
-            } else if (mode == SEAM_CARVE_MODE_TRIANGULAR_PARALLEL) {
+            } else if (mode == SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL) {
                 compute_energy_parallel(image, stride, width, height, channels, energy);
                 int *join_row = malloc(width * sizeof(int));
                 int best_x = 0;
@@ -898,7 +905,7 @@ static double carve_vertical_seams(
 }
 
 
-static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int runs, const char *csv_path) {
+static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int runs, int greedy_batch_size, const char *csv_path) {
     FILE *csv = NULL;
     int failed = 0;
 
@@ -908,10 +915,26 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             fprintf(stderr, "Failed to open CSV output file %s\n", csv_path);
             return 1;
         }
-        fprintf(csv, "image,solution,width,height,seams,runs,height_tiles,threads,t_s_sec,t_p_sec,speedup\n");
+        fprintf(csv, "image,solution,width,height,seams,runs,height_tiles,greedy_batch_size,threads,t_s_sec,t_p_sec,speedup\n");
     }
 
-    printf("Benchmark settings: seams=%d, runs=%d\n", seams_to_remove, runs);
+    printf("Benchmark settings: seams=%d, runs=%d", seams_to_remove, runs);
+    if (greedy_batch_size > 0) {
+        printf(", greedy_batch_size=%d (fixed)\n", greedy_batch_size);
+    } else {
+        printf(", greedy_batch_size=sweep[");
+        for (int i = 0; i < ARRAY_SIZE(kGreedyBatchSizes); ++i) {
+            if (i > 0) {
+                printf(",");
+            }
+            if (kGreedyBatchSizes[i] == 0) {
+                printf("0(all)");
+            } else {
+                printf("%d", kGreedyBatchSizes[i]);
+            }
+        }
+        printf("]\n");
+    }
     printf("Use cluster flags such as --hint=nomultithread and OMP_PLACES=cores for stable measurements.\n");
 
     for (int i = 0; i < ARRAY_SIZE(kBenchmarkImages); ++i) {
@@ -936,6 +959,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
             seams_for_this_image,
             runs,
             0,
+            greedy_batch_size,
             SEAM_CARVE_MODE_SEQUENTIAL,
             1
         );
@@ -955,13 +979,14 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
         if (csv != NULL) {
             fprintf(csv,
-                "%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                "%s,%s,%d,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
                 kBenchmarkImages[i],
                 seam_carve_mode_name(SEAM_CARVE_MODE_SEQUENTIAL),
                 image.width,
                 image.height,
                 seams_for_this_image,
                 runs,
+                0,
                 0,
                 1,
                 t_seq,
@@ -971,14 +996,15 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
         const SeamCarveMode solution_modes[] = {
             SEAM_CARVE_MODE_BASIC_PARALLEL,
-            SEAM_CARVE_MODE_TRIANGULAR_PARALLEL,
+            SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL,
+            SEAM_CARVE_MODE_TRIANGULAR_ONE_WAY_PARALLEL,
             SEAM_CARVE_MODE_GREEDY_PARALLEL
         };
 
         for (int mode_index = 0; mode_index < ARRAY_SIZE(solution_modes); ++mode_index) {
             SeamCarveMode mode = solution_modes[mode_index];
 
-            if (mode == SEAM_CARVE_MODE_TRIANGULAR_PARALLEL) {
+            if (mode == SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL || mode == SEAM_CARVE_MODE_TRIANGULAR_ONE_WAY_PARALLEL) {
                 for (int ht = 0; ht < ARRAY_SIZE(kHeightTiles); ++ht) {
                     int height_tiles = kHeightTiles[ht];
 
@@ -989,6 +1015,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
                             seams_for_this_image,
                             runs,
                             height_tiles,
+                            0,
                             mode,
                             threads
                         );
@@ -1015,7 +1042,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
                         if (csv != NULL) {
                             fprintf(csv,
-                                "%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                                "%s,%s,%d,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
                                 kBenchmarkImages[i],
                                 seam_carve_mode_name(mode),
                                 image.width,
@@ -1023,6 +1050,70 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
                                 seams_for_this_image,
                                 runs,
                                 height_tiles,
+                                0,
+                                threads,
+                                t_seq,
+                                avg_seconds,
+                                speedup);
+                        }
+                    }
+                }
+            } else if (mode == SEAM_CARVE_MODE_GREEDY_PARALLEL) {
+                int greedy_cases = (greedy_batch_size > 0) ? 1 : ARRAY_SIZE(kGreedyBatchSizes);
+
+                for (int g = 0; g < greedy_cases; ++g) {
+                    int batch_size = (greedy_batch_size > 0) ? greedy_batch_size : kGreedyBatchSizes[g];
+                    char batch_label[32];
+
+                    if (batch_size == 0) {
+                        snprintf(batch_label, sizeof(batch_label), "0 (%d)", seams_for_this_image);
+                    } else {
+                        snprintf(batch_label, sizeof(batch_label), "%d", batch_size);
+                    }
+
+                    for (int t = 0; t < ARRAY_SIZE(kThreadCounts); ++t) {
+                        int threads = kThreadCounts[t];
+                        double avg_seconds = benchmark_carve_mode(
+                            &image,
+                            seams_for_this_image,
+                            runs,
+                            0,
+                            batch_size,
+                            mode,
+                            threads
+                        );
+
+                        if (avg_seconds < 0.0) {
+                            failed = 1;
+                            fprintf(stderr,
+                                "Benchmark failed for %s with %s greedy_batch_size=%d threads=%d\n",
+                                kBenchmarkImages[i],
+                                seam_carve_mode_name(mode),
+                                batch_size,
+                                threads);
+                            continue;
+                        }
+
+                        double speedup = (avg_seconds > 0.0) ? (t_seq / avg_seconds) : 0.0;
+
+                        printf("  %-20s gb=%-8s threads=%2d  t_p=%.6f s  speedup=S=t_s/t_p=%.3f\n",
+                            seam_carve_mode_name(mode),
+                            batch_label,
+                            threads,
+                            avg_seconds,
+                            speedup);
+
+                        if (csv != NULL) {
+                            fprintf(csv,
+                                "%s,%s,%d,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                                kBenchmarkImages[i],
+                                seam_carve_mode_name(mode),
+                                image.width,
+                                image.height,
+                                seams_for_this_image,
+                                runs,
+                                0,
+                                batch_size,
                                 threads,
                                 t_seq,
                                 avg_seconds,
@@ -1037,6 +1128,7 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
                         &image,
                         seams_for_this_image,
                         runs,
+                        0,
                         0,
                         mode,
                         threads
@@ -1062,13 +1154,14 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 
                     if (csv != NULL) {
                         fprintf(csv,
-                            "%s,%s,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
+                            "%s,%s,%d,%d,%d,%d,%d,%d,%d,%.9f,%.9f,%.9f\n",
                             kBenchmarkImages[i],
                             seam_carve_mode_name(mode),
                             image.width,
                             image.height,
                             seams_for_this_image,
                             runs,
+                            0,
                             0,
                             threads,
                             t_seq,
@@ -1092,9 +1185,11 @@ static int run_benchmark_mode(const char *image_dir, int seams_to_remove, int ru
 static void print_usage(const char *program) {
     fprintf(stderr,
         "Usage:\n"
-        "  %s <input.png> <output.png> <seams> [threads] [mode]\n"
-        "  Modes: sequential | basic_parallel | triangular_parallel | triangular_one_way_parallel | greedy_parallel\n"
-        "  %s --benchmark <dir> [seams=128] [runs=5] [csv=results.csv]\n",
+    "  %s <input.png> <output.png> <seams> [threads] [mode] [greedy_batch_size]\n"
+        "  Modes: sequential | basic_parallel | top_bottom_parallel | triangular_one_way_parallel | greedy_parallel\n"
+        "         (triangular_parallel is accepted as an alias of top_bottom_parallel)\n"
+    "  %s --benchmark <dir> [seams=128] [runs=5] [csv=results.csv] [greedy_batch_size=0]\n"
+    "  greedy_batch_size=0 means remove as many seams as possible per greedy iteration.\n",
         program, program);
 }
 
@@ -1103,9 +1198,10 @@ int main(int argc, char *argv[]) {
     if (argc >= 2 && strcmp(argv[1], "--benchmark") == 0) {
         int seams_to_remove = 128;
         int runs = 5;
+        int greedy_batch_size = 0;
         const char *csv_output = "benchmark_results.csv";
 
-        if (argc < 3 || argc > 6) {
+        if (argc < 3 || argc > 7) {
             print_usage(argv[0]);
             return 1;
         }
@@ -1119,11 +1215,14 @@ int main(int argc, char *argv[]) {
         if (argc >= 6) {
             csv_output = argv[5];
         }
+        if (argc >= 7 && !parse_int_arg(argv[6], 0, "greedy_batch_size", &greedy_batch_size)) {
+            return 1;
+        }
 
-        return run_benchmark_mode(argv[2], seams_to_remove, runs, csv_output);
+        return run_benchmark_mode(argv[2], seams_to_remove, runs, greedy_batch_size, csv_output);
     }
 
-    if (argc < 4 || argc > 6) {
+    if (argc < 4 || argc > 7) {
         print_usage(argv[0]);
         return 1;
     }
@@ -1132,7 +1231,8 @@ int main(int argc, char *argv[]) {
     const char *output_path = argv[2];
     int seams_to_remove = 0;
     int num_threads = omp_get_max_threads();
-    SeamCarveMode mode = SEAM_CARVE_MODE_TRIANGULAR_PARALLEL; // default
+    int greedy_batch_size = 0;
+    SeamCarveMode mode = SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL; // default
 
     if (!parse_int_arg(argv[3], 0, "seams_to_remove", &seams_to_remove)) return 1;
     if (argc >= 5 && !parse_int_arg(argv[4], 1, "threads", &num_threads))  return 1;
@@ -1140,10 +1240,12 @@ int main(int argc, char *argv[]) {
     if (argc >= 6) {
         if      (strcmp(argv[5], "sequential")                == 0) mode = SEAM_CARVE_MODE_SEQUENTIAL;
         else if (strcmp(argv[5], "basic_parallel")             == 0) mode = SEAM_CARVE_MODE_BASIC_PARALLEL;
-        else if (strcmp(argv[5], "triangular_parallel")        == 0) mode = SEAM_CARVE_MODE_TRIANGULAR_PARALLEL;
+        else if (strcmp(argv[5], "top_bottom_parallel")        == 0) mode = SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL;
+        else if (strcmp(argv[5], "triangular_parallel")        == 0) mode = SEAM_CARVE_MODE_TOP_BOTTOM_PARALLEL;
         else if (strcmp(argv[5], "triangular_one_way_parallel")== 0) mode = SEAM_CARVE_MODE_TRIANGULAR_ONE_WAY_PARALLEL; // ← add
         else if (strcmp(argv[5], "greedy_parallel")            == 0) mode = SEAM_CARVE_MODE_GREEDY_PARALLEL;
     }
+    if (argc >= 7 && !parse_int_arg(argv[6], 0, "greedy_batch_size", &greedy_batch_size)) return 1;
 
     Image image = {0};
     if (!load_image_file(input_path, &image)) {
@@ -1165,6 +1267,7 @@ int main(int argc, char *argv[]) {
         seams_effective,
         num_threads,
         4,
+        greedy_batch_size,
         mode,
         &final_width
     );
@@ -1184,6 +1287,7 @@ int main(int argc, char *argv[]) {
     printf("Output: %s (%dx%d)\n", output_path, final_width, image.height);
     printf("Seams removed: %d\n", seams_effective);
     printf("Threads: %d\n", num_threads);
+    printf("Greedy batch size: %d\n", greedy_batch_size);
     printf("Elapsed: %.6f seconds\n", elapsed);
 
     release_image(&image);

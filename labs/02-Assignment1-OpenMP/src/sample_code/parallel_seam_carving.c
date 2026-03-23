@@ -374,27 +374,34 @@ static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumul
 
     for (int y = 1; y < mid_y; y += height_tiles) {
 
-        // bottom half 
+        int y_bot = height - y - 1;
+
+        // Phase 1: bottom-up + top-down-reversed (independent halves)
         #pragma omp for schedule(static)
         for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
-            compute_cumulative_up_triangle(energy, cumulative, width, mid_y, x, y + height_tiles - 1, height_tiles);
-        }
-        #pragma omp for schedule(static)
-        for (int x = 0; x < width; x += 2 * height_tiles) {
-            compute_cumulative_down_triangle(energy, cumulative, width, mid_y, x + height_tiles, y, height_tiles);
+            compute_cumulative_up_triangle(
+                energy, cumulative, width, mid_y,
+                x, y + height_tiles - 1, height_tiles
+            );
+            compute_cumulative_down_triangle_reversed(
+                energy, cumulative, width, height,
+                x, y_bot - height_tiles + 1, height_tiles
+            );
         }
 
-        // Symmetric y index for the top half image
-        int y_bot = (height) - y - 1; //y start before last row!  
+        // implicit barrier here (important)
 
-        // top half 
-        #pragma omp for schedule(static)
-        for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
-            compute_cumulative_down_triangle_reversed(energy, cumulative, width, height, x, y_bot - height_tiles + 1, height_tiles);
-        }
+        // Phase 2: bottom-down + top-up-reversed (independent halves)
         #pragma omp for schedule(static)
         for (int x = 0; x < width; x += 2 * height_tiles) {
-            compute_cumulative_up_triangle_reversed(energy, cumulative, width, height, x + height_tiles, y_bot, height_tiles);
+            compute_cumulative_down_triangle(
+                energy, cumulative, width, mid_y,
+                x + height_tiles, y, height_tiles
+            );
+            compute_cumulative_up_triangle_reversed(
+                energy, cumulative, width, height,
+                x + height_tiles, y_bot, height_tiles
+            );
         }
 
         //printf("y: %d and Y_bot %d, height: %d, mid_y: %d \n", y, y_bot, height, mid_y); 

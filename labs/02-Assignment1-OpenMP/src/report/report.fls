@@ -154,10 +154,10 @@ INPUT ./report.out
 INPUT ./report.out
 INPUT report.out
 INPUT report.out
+OUTPUT report.pdf
 INPUT ./report.out
 INPUT ./report.out
 OUTPUT report.out
-OUTPUT report.pdf
 INPUT /usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 INPUT /usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 INPUT /usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
@@ -270,6 +270,11 @@ INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchr8c.tfm
+INPUT ./images/performance_first_image.png
+INPUT ./images/performance_first_image.png
+INPUT ./images/performance_first_image.png
+INPUT ./images/performance_first_image.png
+INPUT ./images/performance_first_image.png
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchr8t.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchr7t.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchr7t.tfm
@@ -295,12 +300,10 @@ INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr8c.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7v.vf
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7v.tfm
-INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr8t.vf
-INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr8t.tfm
-INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7y.vf
-INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7y.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7t.vf
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7t.tfm
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr8t.vf
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr8t.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr8t.vf
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr8t.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7y.vf
@@ -313,11 +316,28 @@ INPUT ./images/IMG_0035.png
 INPUT ./images/IMG_0035.png
 INPUT ./images/IMG_0035.png
 INPUT ./images/IMG_0035.png
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7y.vf
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chr7y.tfm
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchr8t.tfm
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchb8t.tfm
 INPUT ./images/Imagen JPEG-482A-803F-04-0.jpeg
 INPUT ./images/Imagen JPEG-482A-803F-04-0.jpeg
 INPUT ./images/Imagen JPEG-482A-803F-04-0.jpeg
 INPUT ./images/Imagen JPEG-482A-803F-04-0.jpeg
 INPUT ./images/Imagen JPEG-482A-803F-04-0.jpeg
+INPUT ./images/performance_comprehensive_greedy_16cores.png
+INPUT ./images/performance_comprehensive_greedy_16cores.png
+INPUT ./images/performance_comprehensive_greedy_16cores.png
+INPUT ./images/performance_comprehensive_greedy_16cores.png
+INPUT ./images/performance_comprehensive_greedy_16cores.png
+INPUT ./images/performance_comprehensive_greedy_32cores.png
+INPUT ./images/performance_comprehensive_greedy_32cores.png
+INPUT ./images/performance_comprehensive_greedy_32cores.png
+INPUT ./images/performance_comprehensive_greedy_32cores.png
+INPUT ./images/performance_comprehensive_greedy_32cores.png
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchb8t.vf
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8y.tfm
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8t.tfm
 INPUT report.aux
 INPUT ./report.out
 INPUT ./report.out

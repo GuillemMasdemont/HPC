@@ -1,8 +1,22 @@
 \relax 
 \providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Speedup analysis for various parallel strategies across five image resolutions. Case use of 4 cores.}}{1}{figure.caption.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Speedup analysis for various parallel strategies across five image resolutions. Case use of 4 cores.\relax }}{1}{figure.caption.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{fig:fixed_cores_performance}{{1}{1}{Speedup analysis for various parallel strategies across five image resolutions. Case use of 4 cores}{figure.caption.1}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Hardware scalability comparison for the 1920x1200 resolution. Each subplot represents a specific parallel strategy, comparing the speedup achieved across different physical core counts (1, 2, 4, and 8 cores) as the number of threads increases.}}{2}{figure.caption.2}\protected@file@percent }
@@ -23,3 +37,15 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Speedup analysis for various parallel strategies across five image resolutions. Case use of 32 cores.}}{7}{figure.caption.8}\protected@file@percent }
 \newlabel{fig:midpoint_sync}{{8}{7}{Speedup analysis for various parallel strategies across five image resolutions. Case use of 32 cores}{figure.caption.8}{}}
 \gdef \@abspage@last{7}
+\newlabel{fig:fixed_cores_performance}{{1}{1}{Speedup analysis for various parallel strategies across five image resolutions. Case use of 4 cores.\relax }{figure.caption.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Hardware scalability comparison for the 1920x1200 resolution. Each subplot represents a specific parallel strategy, comparing the speedup achieved across different physical core counts (1, 2, 4, and 8 cores) as the number of threads increases.\relax }}{3}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:cores_comparison_1920}{{2}{3}{Hardware scalability comparison for the 1920x1200 resolution. Each subplot represents a specific parallel strategy, comparing the speedup achieved across different physical core counts (1, 2, 4, and 8 cores) as the number of threads increases.\relax }{figure.caption.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces left image using optimized parallel and right image using greedy seam removal.\relax }}{4}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:example}{{3}{4}{left image using optimized parallel and right image using greedy seam removal.\relax }{figure.caption.3}{}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {\centering }}}{4}{subfigure.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {\centering }}}{4}{subfigure.3.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Bidirectional seam carving synchronization at the image midpoint $\bar  {y}$. The upward and downward wavefronts (red arrows) converge at the central row, where the optimal transition point $\hat  {x}$ is determined by minimizing the combined energy from both computed halves.\relax }}{5}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:midpoint_sync}{{4}{5}{Bidirectional seam carving synchronization at the image midpoint $\bar {y}$. The upward and downward wavefronts (red arrows) converge at the central row, where the optimal transition point $\hat {x}$ is determined by minimizing the combined energy from both computed halves.\relax }{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Comparison of wavefront tiling strategies for parallel seam carving for a tile height of $3$. \relax }}{5}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:tiling_strategies}{{5}{5}{Comparison of wavefront tiling strategies for parallel seam carving for a tile height of $3$. \relax }{figure.caption.5}{}}
+\gdef \@abspage@last{5}

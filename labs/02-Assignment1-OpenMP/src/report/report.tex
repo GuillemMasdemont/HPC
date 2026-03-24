@@ -112,7 +112,7 @@ We present now how the performance behaviour changes as a function of the cores:
     Here $G$ is a granularity coefficient we have fine-tuned based on the results observed in Figure \ref{fig:firstimage}. In practice, we should take the closest power of $2$ for the thread number. 
     \\
 
-    We also note that the hardware Numa architecture might play a role here, as the total number of CPU cores it presents is $16$. 
+    We also note that the hardware Numa architecture might play a role here, as the total number of CPU cores it has per domain is $16$. 
 
     \item Tile Height Heuristic: In the triangular/wavefront approach, the tile height should be tuned to fit the L2 cache size. This ensures that image computation is large enough to keep all cores busy while remaining small enough to minimize the latency of data storage\footnote{We observe that an alternative heuristic used is $\sqrt{H}$, although we could not verify empirically the validity of it.}.
     \begin{equation}
@@ -123,7 +123,7 @@ We present now how the performance behaviour changes as a function of the cores:
 
 \item To optimize the seam selection process, we modified the aforementioned traditional dynamic programming approach by implementing a bidirectional energy accumulation. 
 
-The image is bisected at $\bar{y} = \lceil h/2 \rceil$, we execute the parallel triangular approach in parallel, on starting on the top and the other on the bottom as shown in image \ref{fig:midpoint_sync}. The final seam is reconstructed by identifying the optimal midpoint $\hat{x}$ via the formula 
+The image is bisected at $\bar{y} = \lceil h/2 \rceil$, we execute the parallel triangular approach in parallel, on starting on the top and the other on the bottom as shown in image \ref{fig:midpoint_sync_comparison}. The final seam is reconstructed by identifying the optimal midpoint $\hat{x}$ via the formula 
 \begin{equation}
   \hat{x} = \underset{i}{\operatorname{argmin}} \left( E(x_i, \bar{y}) + \min \left( E(x_{i-1}, \bar{y}), E(x_i, \bar{y}), E(x_{i+1}, \bar{y}) \right) \right)
 \end{equation}

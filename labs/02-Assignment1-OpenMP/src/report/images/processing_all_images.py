@@ -88,4 +88,4 @@ legend_ax.legend(handles, labels, loc='center', fontsize='large', frameon=True, 
 
 # 5. Finalize layout and save
 plt.tight_layout()
-plt.savefig('performance_comprehensive_greedy.png', dpi=300)
+plt.savefig('performance_comprehensive_greedy', dpi=300)

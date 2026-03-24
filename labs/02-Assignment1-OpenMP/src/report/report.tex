@@ -10,6 +10,7 @@
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{graphicx} % Required for inserting images (put this in your preamble)
+\usepackage{subfig}
 
 
 \makeatletter
@@ -20,7 +21,7 @@
     {\large \@author \par}
     \vspace{0.2cm}
     {\@date \par}
-    \vspace{1cm}
+    \vspace{0.2cm}
     \hrule
   \end{flushleft}
 }
@@ -32,39 +33,74 @@
     Plabon Shaha and Guillem Masdemont \\ 
     \small University of Ljubljana, Spring Semester, EMAI Cohort 25--27 
 }
-\date{\today}
 
 \begin{document}
 
 \maketitle
 
 \begin{enumerate}[label={\textbf{Exercise \arabic*:}}]
-  \item We parallelize all algorithm steps with OpenMP, specifically using the basic parallel approach for cumulative energy and parallelizing only the copying phase of seam removal. All code is compiled with \texttt{-O3} optimizations. 
-
-Execution times are measured across five image resolutions ($720 \times 480$ to $7680 \times 4320$) using 1, 2, 4, 8, 16, and 32 threads. Each test case requires at least 5 runs removing 128 seams to calculate average timings. Performance is evaluated via speed-up, defined as $S = \frac{t_s}{t_p}$, where $t_s$ is the sequential runtime and $t_p$ is the parallel runtime.
-
-
-  \item We implement greedy seam removal to enable the parallel processing of multiple seams and we analyze the trade-offs between execution speed and final image quality. For each algorithm step and image resolution, we perform a scaling study to determine the optimal thread and core counts.
-  
-\begin{enumerate}
-  \item   We proceed now to implement triangle-based cumulative energy approach. We compared two tiling strategies where the image is divided into alternating upward and downward triangular blocks.
-  \begin{enumerate}
-      \item \textbf{Case 1 ($Y \pm 1$):} The tiles have a horizontal tip of two blocks. This approach present the pink dots not uniformly distributed. 
-      
-      \item \textbf{Case 2 ($Y \pm 2$):} The tiles have a single-block tip. This approach present the pink dots uniformly distributed. 
-  \end{enumerate}
-
-  Computationally, both options present similar performance. However, in this study the second approach (single-block tip) seems more suitable because when the height of the triangle is $k=1$, we fully return to the standard sequential approach, and, hence, we have a robust baseline to compare. 
+  \item Execution times are measured for the five resolutions using 1, 2, 4, 8, 16, and 32 threads. We remove 128 seams and average timings across 5 experiments. Performance is evaluated via speed-up, defined as $S = \frac{t_s}{t_p}$, where $t_s$ is the sequential runtime and $t_p$ is the parallel runtime. The results are presented in figure \ref{fig:fixed_cores_performance} for a $4$ core test: 
 
 \begin{figure}[h]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./images/IMG_0034.jpg}
-    \caption{Comparison of wavefront tiling strategies for parallel seam carving. Case 1 (top) shows a non-uniform distribution of synchronization points (pink dots) due to a two-block tip. Case 2 (bottom) uses a single-block tip and uniform distribution of pink dots.}
-    \label{fig:tiling_strategies}
+      \centering
+      \includegraphics[width=0.85\textwidth]{./images/performance_comprehensive_greedy.png}
+      \caption{Speedup analysis for various parallel strategies across five image resolutions. Case use of 4 cores.}
+      \label{fig:fixed_cores_performance}
 \end{figure}
 
-\pagebreak 
+The following conclusions are drawn: 
+\begin{enumerate}
 
+  \item The optimal performance when using no multi-threading is achieved when the number of threads match the number of cores. In such case each core is exactly working on a thread all the time, hence there is no waiting list and performance is maximum. More threads would cause oversubscription. In figure \ref{fig:fixed_cores_performance} this behaviour is observed in all parallel tasks and results are qualitatively similar when using $2$, $8$ and $16$ cores. 
+  
+  \item There is an approximately linear relationship between the number of threads and the achieved speedup, provided the thread count does not exceed the number of physical cores. The parallel efficiency is slightly higher for larger images because the ratio of computation to synchronization overhead improves, and hence there is a more uniform distribution of tasks. 
+  
+  \item Greddy seam removal performs better than other parallel strategies because we are bypassing several cumulative energy recalculations. Note that performing greedy seam removal is an approximation of the algorithm that may fail. A documented example of this trade-off is provided by \href {https://capstone.cs.ucsb.edu/team_docs_12/ngor_ts.pdf}{Ngor et al.}, where GPU acceleration dramatically reduces execution time at the expense of global optimality.
+  
+  \item The performance of the triangular approach and the basic row-parallel method remains comparable when the thread count is less than or equal to the core count. In this regime, both strategies distribute an equivalent pixel-processing load per thread, and the hardware can accommodate them properly. However, once the number of threads exceeds the number of physical cores, the triangular approach becomes a superior alternative because it present a reduced frequency of thread re-scheduling. When threads exceed cores, the threads compete to get allocated in the CPU, increasing the computation time.
+\end{enumerate}
+\begin{figure}[h]
+      \centering
+      \includegraphics[width=0.85\textwidth]{./images/comparison_by_cores_1920x1200.png}
+      \caption{Hardware scalability comparison for the 1920x1200 resolution. Each subplot represents a specific parallel strategy, comparing the speedup achieved across different physical core counts (1, 2, 4, and 8 cores) as the number of threads increases.}
+      \label{fig:cores_comparison_1920}
+\end{figure}
+
+\begin{enumerate}
+  \item Across all parallel implementations, we observe that increasing the thread count yields a corresponding increase in speedup within the undersubscribed regime (where threads $\le$ cores). However, once the number of threads surpasses the physical core count, performance degrades due to oversubscription. Consequently, the number of available physical cores represents the practical upper bound for the algorithm's performance. 
+
+\end{enumerate}
+
+
+\item 
+
+\begin{enumerate}
+
+\item We compare standard seam removal and greedy seam removal across different images and different number of seams to remove. We observe that the algorithm is robust in the dataset, and doesn't present major differences for even seams $500$ seams removed. As shown in figure \ref{fig:example}:  
+  
+\begin{figure}[h]
+    \centering
+    \subfloat[\centering ]{{\includegraphics[width=5cm]{../sample_code/parallel_out_son_goku_1000.png} }}%
+    \qquad
+    \subfloat[\centering ]{{\includegraphics[width=5cm]{../sample_code/greedy_out_son_goku_1000.png} }}%
+    \caption{left image using optimized parallel and right image using greedy seam removal.}%
+    \label{fig:example}%
+\end{figure}
+
+\item We need present the heuristics found for the number of threads and the number of cores as a function of the image size, and we also provide an heuristic for the height of the tiles. 
+
+\begin{itemize}
+    \item Thread Allocation heuristic: For high-resolution images ($1024 \times 768$ pixels and above), the optimal thread count is $T = C$, as the high computational density justifies full hardware utilization, shown in Figure \ref{fig:fixed_cores_performance}. For low-resolution images, $T \ll C$ to avoid the disproportionate cost of thread lifecycle management. Hence we define the heuristic: 
+    \begin{equation}
+        T(W, H, C) = \min\left(C, \left\lfloor \frac{W \times H}{1024 x 768} \right\rfloor\right)
+    \end{equation}
+
+    \item Tile Height Heuristic: In the triangular/wavefront approach, the tile height should be tuned to fit the L2 cache size. This ensures that image computation is large enough to keep all cores busy while remaining small enough to minimize the latency of data storage\footnote{We observe that an alternative heuristic used is $\sqrt{H}$, although we could not verify empirically the validity of it.}.
+    \begin{equation}
+        h_{tile} \approx \frac{\text{L2 Cache Size (bytes)}}{W \times \text{Bytes per Pixel}}
+    \end{equation}
+    
+\end{itemize}
 
 \item To optimize the seam selection process, we modified the aforementioned traditional dynamic programming approach by implementing a bidirectional energy accumulation. 
 
@@ -72,7 +108,7 @@ The image is bisected at $\bar{y} = \lceil h/2 \rceil$, we execute the parallel 
 \begin{equation}
   \hat{x} = \underset{i}{\operatorname{argmin}} \left( E(x_i, \bar{y}) + \min \left( E(x_{i-1}, \bar{y}), E(x_i, \bar{y}), E(x_{i+1}, \bar{y}) \right) \right)
 \end{equation}
-and performing two simultaneous tracebacks, one moving upward and one moving downward from the select $\hat{x_i}$. 
+and performing two simultaneous tracebacks, one moving upward and one moving downward from the select $\hat{x}$. 
 
 
 \begin{figure}[h]
@@ -80,7 +116,31 @@ and performing two simultaneous tracebacks, one moving upward and one moving dow
       \includegraphics[width=0.8\textwidth]{./images/IMG_0035.png}
       \caption{Bidirectional seam carving synchronization at the image midpoint $\bar{y}$. The upward and downward wavefronts (red arrows) converge at the central row, where the optimal transition point $\hat{x}$ is determined by minimizing the combined energy from both computed halves.}
       \label{fig:midpoint_sync}
+\end{figure}
+
+As shown in Figure \ref{fig:fixed_cores_performance}, the performance of this approach has proven effective. 
+
+\end{enumerate}
+
+\pagebreak 
+
+\begin{enumerate}
+  \item   We proceed now to implement triangle-based cumulative energy approach. We compared two tiling strategies:
+  \begin{enumerate}
+      \item \textbf{Case 1 ($Y \pm 1$):} The tiles have a horizontal tip of two blocks. This approach present the pink dots not uniformly distributed, see Figure \ref{fig:tiling_strategies}a). 
+      
+      \item \textbf{Case 2 ($Y \pm 2$):} The tiles have a single-block tip. This approach present the pink dots uniformly distributed, see Figure \ref{fig:tiling_strategies}b). 
+  \end{enumerate}
+
+  \begin{figure}[h]
+      \centering
+      \includegraphics[width=0.65\textwidth]{./images/Imagen JPEG-482A-803F-04-0.jpeg}
+      \caption{Comparison of wavefront tiling strategies for parallel seam carving for a tile height of $3$. }
+      \label{fig:tiling_strategies}
   \end{figure}
+
+
+  Computationally, both options present similar performance. However, in this study the second approach (single-block tip) seems more suitable because when the height of the triangle is $k=1$, we fully return to the standard sequential approach, and, hence, we have a robust baseline to compare. 
 
 \end{enumerate}
 

@@ -95,19 +95,24 @@ We present now how the performance behaviour changes as a function of the cores:
 \item We present the heuristics found for the number of threads as a function of height, width and core number. 
 
 \begin{itemize}
-    \item Thread Allocation heuristic: For high-resolution images ($1024 \times 768$ pixels and above), the optimal thread count is $T = C$, as the high computational density justifies full hardware utilization, shown in Figure \ref{fig:fixed_cores_performance}. For low-resolution images, $T \ll C$, we observe disproportionate cost of thread lifecycle management. 
+    \item Thread Allocation heuristic: For high-resolution images ($1024 \times 768$ pixels and above), the optimal thread count is $T = C$, as the high computational density offsets the overhead required to create and synchronize threads (see Figure \ref{fig:fixed_cores_performance}). However, for low-resolution images, peak performance is achieved when $T < C$. In these cases, the latency of thread management exceeds the execution time of the actual workload.
 
     \begin{figure}[h]
       \centering
       \includegraphics[width=0.5\textwidth]{./images/performance_first_image.png} 
       \caption{Speed up performance for the first image as a function of the number of threads. }
-      \label{fig:my_label}
+      \label{fig:firstimage} 
     \end{figure}
 
     Hence we define the heuristic: 
     \begin{equation}
-        T(W, H, C) = \min\left(C, \left\lfloor \frac{W \times H}{K} \times \frac{C}{32} \right\rfloor\right) \quad K = 1024 \times 768
+        T(W, H, C) = \min\left(C, \left\lfloor \frac{W \times H \times C}{G} \right\rfloor\right) \quad G = 1024 \times 768 \times 32
     \end{equation}
+
+    Here $G$ is a granularity coefficient we have fine-tuned based on the results observed in Figure \ref{fig:firstimage}. In practice, we should take the closest power of $2$ for the thread number. 
+    \\
+
+    We also note that the hardware Numa architecture might play a role here, as the total number of CPU cores it presents is $16$. 
 
     \item Tile Height Heuristic: In the triangular/wavefront approach, the tile height should be tuned to fit the L2 cache size. This ensures that image computation is large enough to keep all cores busy while remaining small enough to minimize the latency of data storage\footnote{We observe that an alternative heuristic used is $\sqrt{H}$, although we could not verify empirically the validity of it.}.
     \begin{equation}
@@ -166,14 +171,14 @@ As shown in Figure \ref{fig:fixed_cores_performance}, the performance of this ap
         \centering
         \includegraphics[width=0.8\textwidth]{./images/performance_comprehensive_greedy_16cores.png}
         \caption{Speedup analysis for various parallel strategies across five image resolutions. Case use of 16 cores.}
-        \label{fig:midpoint_sync}
+        \label{fig:midpoint_sync_16}
   \end{figure}
 
   \begin{figure}[h]
         \centering
         \includegraphics[width=0.8\textwidth]{./images/performance_comprehensive_greedy_32cores.png}
         \caption{Speedup analysis for various parallel strategies across five image resolutions. Case use of 32 cores.}
-        \label{fig:midpoint_sync}
+        \label{fig:midpoint_sync_32}
   \end{figure}
 
 

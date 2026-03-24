@@ -1,10 +1,10 @@
 # Fdb version 4
-["pdflatex"] 1774371391.85711 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" "report.pdf" "report" 1774371398.05523 0
+["pdflatex"] 1774372126.90682 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" "report.pdf" "report" 1774372133.37653 0
   "../sample_code/greedy_out.png" 1774305287.902 13853 901d488476f78ce1d48d856c840c28fe ""
   "../sample_code/greedy_out_son_goku_1000.png" 1774305056.5193 5095107 a625c61cb77a499ba5f01b78cf89a342 ""
   "../sample_code/parallel_out.png" 1774305287.41295 13671 ad5dcf57cb01833c0e2e5a81e96f892e ""
   "../sample_code/parallel_out_son_goku_1000.png" 1774305024.88244 5087586 2d66e308f60adb4744303c2587effa77 ""
-  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" 1774371391.50897 10737 a46aeacf247f3716609c5a17ad8effbf ""
+  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/02-Assignment1-OpenMP/src/report/report.tex" 1774372126.57266 11185 847b43f719242256ac7cb2590433d754 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc" 1276641224 6938 5135be6a8802f13a7faf296d1959a1ab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/jknappen/ec/ecrm1095.tfm" 1136768653 3584 929cdff2b7a8c11bd4d49fd68cb0ae70 ""
@@ -130,9 +130,9 @@
   "images/performance_comprehensive_greedy_32cores.png" 1774357849.86173 1326081 e0f2354ede6f26e2980fd8baa1bfb0fe ""
   "images/performance_first_image.png" 1774358351.47059 528686 7e5ed040bd1cbe987466d76c9069fda4 ""
   "images/performance_last_image.png" 1774370149.0523 276632 a165b071f351d537e24a821e1050a701 ""
-  "report.aux" 1774371397.92712 4516 bf00e49d23ee31de1c4b2d6eecf36b47 "pdflatex"
-  "report.out" 1774371397.92917 197 e14bfc3941acd95cb86f05cfcf1295d1 "pdflatex"
-  "report.tex" 1774371391.50897 10737 a46aeacf247f3716609c5a17ad8effbf ""
+  "report.aux" 1774372133.1787 4524 7821eb16c0ff1c477629e3961d330a10 "pdflatex"
+  "report.out" 1774372133.17984 197 e14bfc3941acd95cb86f05cfcf1295d1 "pdflatex"
+  "report.tex" 1774372126.57266 11185 847b43f719242256ac7cb2590433d754 ""
   (generated)
   "report.aux"
   "report.log"

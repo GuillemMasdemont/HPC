@@ -51,7 +51,7 @@
 The following conclusions are drawn: 
 \begin{enumerate}
 
-  \item The optimal performance when using no multi-threading is achieved when the number of threads match the number of cores. In such case each core is exactly working on a thread all the time, hence there is no waiting list and performance is maximum. More threads would cause oversubscription. In figure \ref{fig:fixed_cores_performance} this behaviour is observed in all parallel tasks and results are qualitatively similar when using $2$, $8$ and $16$ cores. 
+  \item The best performance is typically obtained when the number of OpenMP threads matches the number of physical cores. In this regime, each thread can run on a core without oversubscription, minimizing context switching and scheduling overhead. For this workload, which is strongly memory-access intensive (large matrix traversals and frequent neighborhood reads), adding extra software threads beyond the core count does not increase effective memory bandwidth and may increase cache and memory-system contention. Therefore, oversubscription degrades performance. Figure \ref{fig:fixed_cores_performance} shows this behavior consistently across all parallel tasks, with qualitatively similar trends for $2$, $8$, and $16$ cores. 
   
   \item There is an approximately linear relationship between the number of threads and the achieved speedup, provided the thread count does not exceed the number of physical cores. The parallel efficiency is slightly higher for larger images because the ratio of computation to synchronization overhead improves, and hence there is a more uniform distribution of tasks. 
   

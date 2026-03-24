@@ -59,10 +59,12 @@ The following conclusions are drawn:
   
   \item The performance of the triangular approach and the basic row-parallel method remains comparable when the thread count is less than or equal to the core count. In this regime, both strategies distribute an equivalent pixel-processing load per thread, and the hardware can accommodate them properly. However, once the number of threads exceeds the number of physical cores, the triangular approach becomes a superior alternative because it present a reduced frequency of thread re-scheduling. When threads exceed cores, the threads compete to get allocated in the CPU, increasing the computation time.
 \end{enumerate}
+
+We present now how the performance behaviour changes as a function of the cores: 
 \begin{figure}[h]
       \centering
-      \includegraphics[width=0.85\textwidth]{./images/comparison_by_cores_1920x1200.png}
-      \caption{Hardware scalability comparison for the 1920x1200 resolution. Each subplot represents a specific parallel strategy, comparing the speedup achieved across different physical core counts (1, 2, 4, and 8 cores) as the number of threads increases.}
+      \includegraphics[width=0.75\textwidth]{./images/comparison_by_cores_1920x1200.png}
+      \caption{Hardware scalability comparison for the 1920x1200 resolution image.}
       \label{fig:cores_comparison_1920}
 \end{figure}
 
@@ -72,36 +74,40 @@ The following conclusions are drawn:
 \end{enumerate}
 
 
+
 \item 
 
 \begin{enumerate}
 
-\item We compare standard seam removal and greedy seam removal across different images and different number of seams to remove. We observe that the algorithm is robust in the dataset, and doesn't present major differences for even seams $500$ seams removed. As shown in figure \ref{fig:example}:  
+\item We compare standard seam removal and greedy seam removal across different images and different number of seams to remove. We observe that the algorithm is robust in the dataset, and doesn't present major differences for even seams $500$ seams removed. As shown in figure \ref{fig:four_images_comparison}.  
   
+
 \begin{figure}[h]
     \centering
-    \subfloat[\centering ]{{\includegraphics[width=5cm]{../sample_code/parallel_out_son_goku_1000.png} }}%
-    \qquad
-    \subfloat[\centering ]{{\includegraphics[width=5cm]{../sample_code/greedy_out_son_goku_1000.png} }}%
-    \caption{left image using optimized parallel and right image using greedy seam removal.}%
-    \label{fig:example}%
+    \subfloat[\centering ]{{\includegraphics[width=2.0cm]{../sample_code/parallel_out.png} }}%
+    \subfloat[\centering ]{{\includegraphics[width=2.0cm]{../sample_code/greedy_out.png} }}%
+    \subfloat[\centering ]{{\includegraphics[width=3.2cm]{../sample_code/parallel_out_son_goku_1000.png} }}%
+    \subfloat[\centering ]{{\includegraphics[width=3.2cm]{../sample_code/greedy_out_son_goku_1000.png} }}%
+    \caption{Comparison of four seam removal results: alternating between optimized parallel and greedy approaches.}%
+    \label{fig:four_images_comparison}%
 \end{figure}
 
-\item We need present the heuristics found for the number of threads and the number of cores as a function of the image size, and we also provide an heuristic for the height of the tiles. 
+\item We present the heuristics found for the number of threads as a function of height, width and core number. 
 
 \begin{itemize}
-    \item Thread Allocation heuristic: For high-resolution images ($1024 \times 768$ pixels and above), the optimal thread count is $T = C$, as the high computational density justifies full hardware utilization, shown in Figure \ref{fig:fixed_cores_performance}. For low-resolution images, $T \ll C$ to avoid the disproportionate cost of thread lifecycle management. Hence we define the heuristic: 
-    \begin{equation}
-        T(W, H, C) = \min\left(C, \left\lfloor \frac{W \times H}{K}C \right\rfloor\right) \quad K \in \{0, 10^4\}
-    \end{equation}
+    \item Thread Allocation heuristic: For high-resolution images ($1024 \times 768$ pixels and above), the optimal thread count is $T = C$, as the high computational density justifies full hardware utilization, shown in Figure \ref{fig:fixed_cores_performance}. For low-resolution images, $T \ll C$, we observe disproportionate cost of thread lifecycle management. 
 
     \begin{figure}[h]
       \centering
-      \includegraphics[width=0.6\textwidth]{./images/performance_first_image.png}
-      \caption{Performance for a first image on a 32 threads. }
-      \label{fig:midpoint_sync}
+      \includegraphics[width=0.5\textwidth]{./images/performance_first_image.png} 
+      \caption{Speed up performance for the first image as a function of the number of threads. }
+      \label{fig:my_label}
     \end{figure}
 
+    Hence we define the heuristic: 
+    \begin{equation}
+        T(W, H, C) = \min\left(C, \left\lfloor \frac{W \times H}{K} \times \frac{C}{32} \right\rfloor\right) \quad K = 1024 \times 768
+    \end{equation}
 
     \item Tile Height Heuristic: In the triangular/wavefront approach, the tile height should be tuned to fit the L2 cache size. This ensures that image computation is large enough to keep all cores busy while remaining small enough to minimize the latency of data storage\footnote{We observe that an alternative heuristic used is $\sqrt{H}$, although we could not verify empirically the validity of it.}.
     \begin{equation}
@@ -118,24 +124,31 @@ The image is bisected at $\bar{y} = \lceil h/2 \rceil$, we execute the parallel 
 \end{equation}
 and performing two simultaneous tracebacks, one moving upward and one moving downward from the select $\hat{x}$. 
 
-
 \begin{figure}[h]
-      \centering
-      \includegraphics[width=0.8\textwidth]{./images/IMG_0035.png}
-      \caption{Bidirectional seam carving synchronization at the image midpoint $\bar{y}$. The upward and downward wavefronts (red arrows) converge at the central row, where the optimal transition point $\hat{x}$ is determined by minimizing the combined energy from both computed halves.}
-      \label{fig:midpoint_sync}
+    \centering
+    \subfloat[\centering Midpoint Synchronization]{{\includegraphics[width=10cm]{./images/IMG_0035.png} }}%
+    \hspace{-0.4cm} 
+    \subfloat[\centering Performance Results]{{\includegraphics[width=5cm]{./images/performance_last_image.png} }}%
+    \caption{Bidirectional seam carving: The left image visualizes the wavefront convergence at the midpoint $\bar{y}$, where the optimal transition point $\hat{x}$ is determined by minimizing the combined energy from both computed halves. The right image shows the corresponding performance speedup.}%
+    \label{fig:midpoint_sync_comparison}%
 \end{figure}
 
-As shown in Figure \ref{fig:fixed_cores_performance}, the performance of this approach has proven effective. 
+
+
+As shown in Figure \ref{fig:fixed_cores_performance}, the performance of this approach has proven effective for different cores. Specficially, for the case where the number of cores is 32 we surpass any other implementation: 
+
+
+
+
 
 \end{enumerate}
 
 \pagebreak 
 
-\section{Comments}
+\section{Additional data and comments:}
 
 \begin{enumerate}
-  \item   We proceed now to implement triangle-based cumulative energy approach. We compared two tiling strategies:
+  \item   For implementing the trinagle strategy approach, we compared two tiling strategies:
   \begin{enumerate}
       \item \textbf{Case 1 ($Y \pm 1$):} The tiles have a horizontal tip of two blocks. This approach present the pink dots not uniformly distributed, see Figure \ref{fig:tiling_strategies}a). 
       

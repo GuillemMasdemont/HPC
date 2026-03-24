@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # 1. Load the benchmark data
 # Adjust path as necessary (e.g., 'benchmark_results.csv')
-df = pd.read_csv('../data/benchmark_4cores_new.csv')
+df = pd.read_csv('../data/benchmark_32cores_new.csv')
 
 # 2. Get the unique images (Total of 5)
 images = df['image'].unique()
@@ -88,4 +88,4 @@ legend_ax.legend(handles, labels, loc='center', fontsize='large', frameon=True, 
 
 # 5. Finalize layout and save
 plt.tight_layout()
-plt.savefig('performance_comprehensive_greedy', dpi=300)
+plt.savefig('performance_comprehensive_greedy_one', dpi=300)

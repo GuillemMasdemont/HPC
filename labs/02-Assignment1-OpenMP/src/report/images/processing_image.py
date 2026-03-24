@@ -16,11 +16,11 @@ if len(images) == 0:
     print("No images found in the dataset.")
     exit()
 
-img = images[0]  # Select the first image
+img = images[-1]  # Select the first image
 img_data = df[df['image'] == img]
 
 # 3. Initialize a single figure
-plt.figure(figsize=(8, 6))
+plt.figure(figsize=(4.5, 5))
 ax = plt.gca()
 
 # To store handles and labels for the legend
@@ -82,8 +82,8 @@ ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
 ax.get_yaxis().set_major_formatter(plt.ScalarFormatter()) 
 
 ax.grid(True, which="both", linestyle='--', alpha=0.4)
-ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1), fontsize='large')
+#ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1, 1), fontsize='large')
 
 plt.tight_layout()
-plt.savefig('performance_first_image.png', dpi=300)
+plt.savefig('performance_last_image.png', dpi=300)
 #plt.show()

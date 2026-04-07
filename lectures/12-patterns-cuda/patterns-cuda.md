@@ -138,7 +138,7 @@
   - each invocation of reduce function needs $\chi$ to complete
   - total execution time is $t_s = \chi (N-1)$
 - parallel tree-like reduction, $n=2^k, k\in \mathbb{N}$
-  - establishing communication takes $\lambda$ units of time 
+  - establishing communication takes $\lambda$ units of time
   - $N/2$ reductions in the first stage can go in parallel, $N/4$ in the second stage can go in parallel ... $1$ reduction in the last stage
   - altogether we have $\log_2 N$ stages with total $N-1$ reductions
   - total execution time equals $t_p = (\chi+\lambda)\log_2 N$
@@ -188,3 +188,86 @@
   - [dotprod8.cu](files/2-reduce/dotprod8.cu): atomic add, no summation on CPU
   - [dotprod9.cu](files/2-reduce/dotprod9.cu): dynamic allocation of local memory
   - [dotprodA.cu](files/2-reduce/dotprodA.cu): managed memory solution
+
+## Scan
+
+- also prefix scan
+- produces all partial reductions of an input sequence
+
+  <img src="figures/scan-ser-inc.png" alt="Serial inclusive scan" width="45%" />
+
+- exclusive and inclusive scan
+- operation
+  - input sequence:
+    $[𝑎_0, 𝑎_1, 𝑎_2, ..., 𝑎_(N−1)]$
+  - output:
+    - exclusive scan: $[I, a_0, a_0 \oplus a_1, a_0 \oplus a_1 \oplus a_2, \ldots, a_0 \oplus \cdots \oplus a_{N-2}]$
+    - inclusive scan: $[a_0, a_0 \oplus a_1, a_0 \oplus a_1 \oplus a_2, \ldots, a_0 \oplus \cdots \oplus a_{N-1}]$
+
+  <img src="figures/scan-excl-incl.png" alt="Exclusive and inclusive scan" width="60%" />
+
+- sequential approach
+  - loop-carried dependence
+- parallel approach
+  - loop-carried dependence
+  - similar to reduce
+  - two solutions
+    - Count on associativity of the combiner function ($\oplus$)
+- combining scan
+  - map
+    - tiled scan: map can be applied before the first stage and/or after the last stage
+    - reduces data transfers
+  - reduce
+    - similar scheme, can do both with little extra work
+
+### Parallel scan with double buffering
+
+- Hillis and Steele, 1986
+- requires two buffers of length $N$
+
+  <img src="figures/scan-double-buffering.png" alt="Parallel scan with double buffering" width="90%" />
+
+### Two-phase parallel scan
+
+- Blelloch, 1990
+- tree-like approach
+- requires only one buffer of length $N$
+- more synchronizations
+- first phase: up-sweep
+  - stride increases: $0, \ldots, \lfloor\log_2 N\rfloor - 1$
+  - see displacements of elements used in computation in figure below
+- second phase: down-sweep
+  - stride decreases: $\lfloor\log_2 N\rfloor - 1, \ldots, 0$
+  - see displacements of elements used in computation in figure below
+
+  <img src="figures/scan-two-phase.png" alt="Two-phase parallel scan" width="90%" />
+
+### Tiled scan
+
+- if problem cannot fit to one CPU, we split the problem to tiles
+- three stage approach
+  - each processor handles one tile (serial or parallel solution)
+  - scan on last elements in each tile (blue) gives offsets (green)
+  - addition of offsets can be again performed inside each tile to get final values (gray)
+
+  <img src="figures/scan-tiles.png" alt="Parallel scan with tiles" width="90%" />
+
+### GPU implementations
+
+- tiled scan approach where size of a tile equals block size
+- ```blockSum``` in GPU global memory holds the value of last element in each tile
+- ```blockSum``` is a result of the ```scan``` kernel and is used by the ```add```kernel to compute offsets
+- local memory
+  - double length array presents input and output buffer
+  - as there is no pointers in CUDA C, we use two displacements ```dIn``` and ```dOut``` to determine beginning of the input and output part of the buffer
+
+  <img src="figures/scan-double-buffering-gpu.png" alt="Double buffering in local memory with CUDA C" width="30%" />
+
+- solutions for inclusive scan
+  - [scan0.cu](files/3-scan/scan0.cu): serial scan inside blocks (tiles) using local memory, serial computation of offsets
+  - [scan1.cu](files/3-scan/scan1.cu): parallel double-buffering scan
+    - double buffering inside a thread block (tile)
+    - offsets are computed by reduce operation as each thread block has to do it on its own
+    - addition of offsets goes in parallel
+  - [scan2.cu](files/3-scan/scan2.cu): two-phase scan
+    - only the ```scan```kernel is updated

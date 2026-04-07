@@ -12,44 +12,48 @@
 
 // kernels
 
-__global__ void scan(float *in, float *out, float *blockSum, int size) {		
-    
-	__shared__ float tile[2*THREADS_PER_BLOCK];
+__global__ void scan(float *in, float *out, float *blockSum, int size) {
 
-	int lid = threadIdx.x;
-	int gid = blockDim.x * blockIdx.x + threadIdx.x;
-	int dIn = 0;			// displacement of local input array in tile
-	int dOut = blockDim.x;	// displacement of local output array in tile
+    __shared__ float tile[THREADS_PER_BLOCK];   // single buffer
+
+    int lid = threadIdx.x;
+    int gid = blockDim.x * blockIdx.x + threadIdx.x;
 
 	// Read to local memory
 	if (gid < size)
-		tile[dIn + lid] = in[gid];
+		tile[lid] = in[gid];
 	else
-		tile[dIn + lid] = 0.0f;
-	tile[dOut + lid] = 0.0f;
+		tile[lid] = 0.0f;
 
-	__syncthreads();
+    __syncthreads();
 
-	for (int offset = 1; offset < size; offset <<= 1) {
-		tile[dOut + lid] = tile[dIn + lid];
-		if(lid >= offset)
-			tile[dOut + lid] += tile[dIn + lid - offset];
-
+	// phase 1: up-sweep
+	int lidOffset;
+	int step = 1;	// 2^k
+	while (2*step <= blockDim.x) {
+		lidOffset = lid - (2*step-1);
+		if (lidOffset >= 0 && lidOffset % (2*step) == 0)
+			tile[lid] += tile[lid - step];
 		__syncthreads();
-
-		dIn = blockDim.x - dIn;		// swap in <-> out
-		dOut = blockDim.x - dOut;
+		step <<= 1;
 	}
 
-	dIn = blockDim.x - dIn;			// swap in <-> out
-	dOut = blockDim.x - dOut;
+	// phase 2: down-sweep
+	step >>= 1;
+	while (step >= 1) {
+		lidOffset = lid - (3*step-1);
+		if (lidOffset >= 0 && lidOffset % (2*step) == 0)
+			tile[lid] += tile[lid - step];
+		__syncthreads();
+		step >>= 1;
+	}
 
 	if (gid < size)
-		out[gid] = tile[dOut + lid];
+		out[gid] = tile[lid];
 
 	if (lid == 0)
-		blockSum[blockIdx.x] = tile[dOut + blockDim.x - 1];
-}														
+		blockSum[blockIdx.x] = tile[blockDim.x - 1];		
+}								
 
 __global__ void add(float *out, float *blockSum, int size) {		
 	

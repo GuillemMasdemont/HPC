@@ -38,12 +38,17 @@
   - lectures:
     [Graphics Processing Units](lectures/10-gpus/gpus.md),
     [CUDA Programming Interface](lectures/11-cuda/cuda.md),
-  - labs: Assignment 1 report defense
+  - labs: 
+    Assignment 1 report defense
 
 - Week 06:
-  - lectures: [Patterns with CUDA: stencil and reduce](lectures/12-patterns-cuda/patterns-cuda.md)
-  - labs: [Assignment 2 - Lenia](labs/03-Assignment2-CUDA/Assignment2.md)  
+  - lectures:
+    [Patterns with CUDA: stencil and reduce](lectures/12-patterns-cuda/patterns-cuda.md)
+  - labs:
+    [Assignment 2 - Lenia](labs/03-Assignment2-CUDA/Assignment2.md)  
 
 - Week 07:
-  - lectures: [Patterns with CUDA: scan](lectures/12-patterns-cuda/patterns-cuda.md#scan)
+  - lectures:
+    [Patterns with CUDA: Scan](lectures/12-patterns-cuda/patterns-cuda.md#scan),
+    [Dense Matrix Multiplication](lectures/13-matrix-mult-dense-cuda/matrix-mult-dense-cuda.md)
   - labs:

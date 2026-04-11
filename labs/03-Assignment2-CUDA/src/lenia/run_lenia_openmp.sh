@@ -4,7 +4,7 @@ set -euo pipefail
 
 #SBATCH --reservation=fri
 #SBATCH --partition=gpu
-#SBATCH --job-name=lenia
+#SBATCH --job-name=lenia_openmp
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
@@ -19,20 +19,19 @@ OUT_DIR="$BASE_DIR/outputs"
 mkdir -p "$LOG_DIR" "$OUT_DIR"
 
 RUN_ID="${SLURM_JOB_ID:-local}_$(date +%Y%m%d_%H%M%S)"
-LOG_FILE="$LOG_DIR/lenia_${RUN_ID}.log"
-OUT_FILE="$OUT_DIR/lenia_${RUN_ID}.out"
+LOG_FILE="$LOG_DIR/lenia_openmp_${RUN_ID}.log"
+OUT_FILE="$OUT_DIR/lenia_openmp_${RUN_ID}.out"
 
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-#LOAD MODULES 
+#LOAD MODULES
 module load CUDA
 
 #BUILD
-make
+make -f Makefile.openmp
 
 #RUN
-srun ./lenia.out > "$OUT_FILE"
+srun ./lenia_openmp.out > "$OUT_FILE"
 
 echo "Program output saved to: $OUT_FILE"
 echo "Build/runtime log saved to: $LOG_FILE"
-

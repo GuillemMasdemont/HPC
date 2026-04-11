@@ -1,0 +1,84 @@
+Parallel Seam Carving - Run Instructions
+
+Build
+- Linux (GCC + OpenMP):
+  gcc -O3 -fopenmp parallel_seam_carving.c -lm -o parallel_seam_carving
+
+--------------------------------------------------
+Single Image Run
+--------------------------------------------------
+
+Usage
+  ./parallel_seam_carving <input.png> <output.png> <seams> [threads] [mode] [greedy_batch_size]
+
+Arguments
+- <input.png>: input image path
+- <output.png>: output image path
+- <seams>: number of vertical seams to remove
+- [threads]: OpenMP threads (default: omp_get_max_threads())
+- [mode]: one of
+  - sequential
+  - basic_parallel
+  - top_bottom_parallel
+  - triangular_one_way_parallel
+  - greedy_parallel
+  Note: triangular_parallel is accepted as an alias of top_bottom_parallel.
+- [greedy_batch_size]: only used by greedy_parallel
+  - 0 = remove as many seams as possible per greedy iteration
+  - >0 = fixed greedy batch size
+
+Examples
+- Default mode (top_bottom_parallel), 8 threads:
+  ./parallel_seam_carving ../test_images/720x480.png out_top_bottom.png 128 8
+
+- Explicit top-bottom mode:
+  ./parallel_seam_carving ../test_images/720x480.png out_top_bottom.png 128 8 top_bottom_parallel
+
+- One-way triangular mode:
+  ./parallel_seam_carving ../test_images/720x480.png out_one_way.png 128 8 triangular_one_way_parallel
+
+- Greedy mode, all-remaining batch policy:
+  ./parallel_seam_carving ../test_images/720x480.png out_greedy_all.png 128 8 greedy_parallel 0
+
+- Greedy mode, fixed batch size 32:
+  ./parallel_seam_carving ../test_images/720x480.png out_greedy_32.png 128 8 greedy_parallel 32
+
+--------------------------------------------------
+Benchmark Mode
+--------------------------------------------------
+
+Usage
+  ./parallel_seam_carving --benchmark <dir> [seams=128] [runs=5] [csv=results.csv] [greedy_batch_size=0]
+
+Arguments
+- <dir>: folder containing benchmark images
+  Expected image names:
+  - 720x480.png
+  - 1024x768.png
+  - 1920x1200.png
+  - 3840x2160.png
+  - 7680x4320.png
+- [seams]: seams to remove for each image (capped to width-1)
+- [runs]: repetitions per configuration
+- [csv]: output CSV file path
+- [greedy_batch_size]: behavior for greedy benchmark
+  - 0 = sweep predefined greedy batch sizes: 0,1,2,4,8,16,32,64
+  - >0 = benchmark only that fixed greedy batch size
+
+Examples
+- Full benchmark with defaults:
+  ./parallel_seam_carving --benchmark ../test_images
+
+- Benchmark with 128 seams, 5 runs, custom CSV:
+  ./parallel_seam_carving --benchmark ../test_images 128 5 results.csv
+
+- Benchmark with fixed greedy batch size 32:
+  ./parallel_seam_carving --benchmark ../test_images 128 5 results.csv 32
+
+--------------------------------------------------
+Notes
+--------------------------------------------------
+
+- In benchmark output, greedy label "gb=0 (N)" means the special greedy policy that tries to remove all remaining seams (up to N for that image) in that iteration.
+- For stable HPC measurements, use settings like:
+  --hint=nomultithread and OMP_PLACES=cores

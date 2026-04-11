@@ -5,10 +5,10 @@ CC = nvcc
 LDLIBS = -lm
 CFLAGS = -Wno-deprecated-gpu-targets -gencode=arch=compute_70,code=sm_70 -O3 -Xcompiler --openmp,-Wall
 
-SRC=src
+SRC = src
 
-# Source files (default CUDA variant)
-SRCS = $(SRC)/main.c $(SRC)/lenia.cu $(SRC)/orbium.c $(SRC)/gifenc.c
+# Source files (OpenMP variant)
+SRCS = $(SRC)/main.c $(SRC)/lenia_openmp.cu $(SRC)/orbium.c $(SRC)/gifenc.c
 
 # Header files
 HDRS = $(wildcard $(SRC)/*.h)
@@ -18,7 +18,7 @@ OBJS_1 = $(SRCS:$(SRC)/%.c=%.o)
 OBJS = $(OBJS_1:$(SRC)/%.cu=%.o)
 
 # Executable name
-TARGET = lenia.out
+TARGET = lenia_openmp.out
 
 # Build target
 $(TARGET): $(OBJS)
@@ -30,6 +30,7 @@ $(TARGET): $(OBJS)
 
 %.o: $(SRC)/%.c $(HDRS)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
 # Clean
 clean:
 	rm -f $(OBJS) $(TARGET)

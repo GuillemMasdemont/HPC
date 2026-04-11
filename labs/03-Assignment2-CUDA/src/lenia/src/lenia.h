@@ -12,6 +12,7 @@ struct orbium_coo {
 };
 
 double *evolve_lenia(const unsigned int rows, const unsigned int cols, const unsigned int steps, const double dt, const unsigned int kernel_size, const struct orbium_coo *orbiums, const unsigned int num_orbiums);
+void set_openmp_threads(int num_threads);
 
 #ifdef __cplusplus
 }

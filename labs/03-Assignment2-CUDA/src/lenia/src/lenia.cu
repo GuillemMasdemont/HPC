@@ -22,6 +22,11 @@ inline double gauss(double x, double mu, double sigma)
     return exp(-0.5 * pow((x - mu) / sigma, 2));
 }
 
+void set_openmp_threads(int num_threads)
+{
+    (void)num_threads;
+}
+
 // Function for growth criteria
 double growth_lenia(double u)
 {

@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-	// init surface with added halo
+	// init surface with added halo (this is the initial condition)
 	float* h_surface = (float*)malloc((N+2) * (N+2) * sizeof(float));
 	for(int i = 0; i < (N+2) * (N+2); i++)
 		h_surface[i] = 0.0;

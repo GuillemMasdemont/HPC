@@ -335,7 +335,6 @@ static void compute_cumulative_down_triangle_reversed(const int *energy, int *cu
     }
 }
 
-// Join at mid_y: sum top-down and best bottom-up neighbor for each cell
 static int compute_join_midpoint(const int *cumulative, int *join_row, int width, int mid_y) {
     
     for (int x = 0; x < width; ++x) {
@@ -345,9 +344,7 @@ static int compute_join_midpoint(const int *cumulative, int *join_row, int width
         int bot_right   = cumulative[(mid_y - 1) * width + clamp_index(x + 1, width)];
         join_row[x]     = top_val + min3(bot_left, bot_mid, bot_right);
     }
-    // implicit barrier here — all join_row values ready before we find the minimum
 
-    // Find the x with minimum total energy at the join row (sequential, width is small relative to height)
     int best_x = 0;
     for (int x = 1; x < width; ++x) {
         if (join_row[x] < join_row[best_x]) {
@@ -377,7 +374,7 @@ static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumul
 
         int y_bot = height - y - 1;
 
-        // Phase 1: bottom-up + top-down-reversed (independent halves)
+        //bottom-up + top-down-reversed 
         #pragma omp for schedule(static)
         for (int x = 0; x < width + height_tiles; x += 2 * height_tiles) {
             compute_cumulative_up_triangle(
@@ -390,9 +387,7 @@ static void compute_cumulative_top_bottom_parallel(const int *energy, int *cumul
             );
         }
 
-        // implicit barrier here (important)
-
-        // Phase 2: bottom-down + top-up-reversed (independent halves)
+        //bottom-down + top-up-reversed 
         #pragma omp for schedule(static)
         for (int x = 0; x < width; x += 2 * height_tiles) {
             compute_cumulative_down_triangle(
@@ -814,9 +809,7 @@ static double carve_vertical_seams(
 
     double t_start = omp_get_wtime();
 
-    /* ------------------------------------------------------------------ */
-    /* GREEDY path: accumulate multiple seam masks, compact once per batch */
-    /* ------------------------------------------------------------------ */
+
     if (seam_carve_mode_uses_greedy(mode)) {
         while (seams_to_remove > 0 && width > 1) {
             int batch_limit = seams_to_remove;
@@ -844,9 +837,6 @@ static double carve_vertical_seams(
             seams_to_remove -= removed;
         }
 
-    /* ------------------------------------------------------------------ */
-    /* NON-GREEDY path: one seam at a time, variant chosen by mode         */
-    /* ------------------------------------------------------------------ */
     } else {
         for (int seam = 0; seam < seams_to_remove; ++seam) {
 

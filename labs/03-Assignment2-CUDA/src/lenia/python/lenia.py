@@ -115,3 +115,4 @@ def update(i):
 # animation activation
 ani = animation.FuncAnimation(fig, update, steps, interval=10, blit=True)
 plt.show()
+

@@ -38,9 +38,17 @@
 \maketitle
 
 \begin{enumerate}[label={\textbf{Exercise \arabic*:}}]
-  \item We parallelize the algorithm as efficient as we can, and we compare with the base sequential performance with differennt numbers of tiles. The results are averaged over $5$ experiments across diferent resolutions. 
+  \item We parallelize the algorithm and present $5$ versions that keep optimizing. We compare the speedup performance with the baseline model. We consider the following $5$ models: 
 
-\begin{figure}[htbp]
+
+\begin{itemize} 
+    \item \textbf{GPU Naive:} An embarrassingly parallel implementation on CUDA by blocks (see \texttt{heat1.cu}). 
+    \item \textbf{GPU Shared Memory (V1):} We use \texttt{\_\_shared\_\_} memory to allocate the halo pixels that are not inside the block in the computation (see \texttt{heat2.cu} and \texttt{heat3.cu}).  
+    \item \textbf{GPU V2 (Constant + No Modulo):} Relocates the kernel to \texttt{\_\_constant\_\_} memory for hardware broadcasting and replaces expensive modulo (\texttt{\%}) operations with \texttt{if/else} bounds checking to reduce arithmetic costs.
+    \item \textbf{GPU V3 (FP32):} Transitions from 64-bit to 32-bit precision. By this, we unlock the GPU's dominant FP32 cores and doubles effective memory bandwidth.
+\end{itemize}
+
+\begin{figure}[h]
     \centering
     % Adjust the width if needed (e.g., 0.9\textwidth or \linewidth)
     \includegraphics[width=\textwidth]{combined_performance_plots.png}
@@ -48,8 +56,18 @@
     \label{fig:performance_plots}
 \end{figure}
 
+Now, we plot the relative speepd performance as a function of the image size and the tile size: 
 
-  \begin{table}[h]
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{tile_speedup_comparison.png}
+    \caption{Comparison of the overall speedup factor (V3 optimized kernel vs. Sequential CPU) across different thread block tile sizes. A tile size of $16 \times 16$ yields the optimal hardware saturation for large grid sizes.}
+    \label{fig:tile_comparison}
+\end{figure}
+
+\pagebreak
+
+\begin{table}[h]
 \centering
 \caption{Performance Metrics for Tile Size 8}
 \begin{tabular}{rcccccc}
@@ -102,13 +120,7 @@ $N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & Speedup($v3$
 
 The staggered implementation of CUDA optimizations resulted in a peak speedup of nearly $7700\times$ over the sequential CPU baseline. The impact of each architectural consideration can be summarized as follows:
 
-\begin{itemize}
-    \item \textbf{Tile Size Optimization ($16 \times 16$ Sweet Spot):} A block dimension of $16 \times 16$ yielded the highest throughput for large grids. Tile size 8 underutilizes the Streaming Multiprocessors (SMs) by spawning too many lightweight blocks, while tile size 32 requires excessive shared memory per block, lowering overall warp occupancy.
-    \item \textbf{Shared Memory Tiling ($V1$):} Introducing collaborative loading into \texttt{\_\_shared\_\_} memory eliminated redundant global memory fetches. This optimization alone halved the execution time across almost all grid sizes, proving memory bandwidth to be the primary bottleneck in the naive implementation.
-    \item \textbf{Constant Memory and Divergence Reduction ($V2$):} Relocating the convolution matrix to \texttt{\_\_constant\_\_} memory leveraged hardware broadcasting, allowing all threads in a warp to access kernel weights simultaneously. Furthermore, replacing the expensive modulo (\texttt{\%}) wrap-around math with simple bounds checking (\texttt{if/else}) significantly reduced arithmetic latency.
-    \item \textbf{Single Precision Floating Point ($V3$):} The transition from 64-bit \texttt{double} to 32-bit \texttt{float} provided an additional $2\times$ performance jump. This effectively doubled the available memory bandwidth and unlocked the massively parallel FP32 cores dominant in consumer-grade GPU architectures.
-    \item \textbf{Hardware Saturation:} At smaller grid sizes (e.g., $N=128$), the performance delta between optimizations is minimal. The hardware only becomes fully saturated—revealing the true architectural benefits of the optimization stack—at $N \ge 1024$, where warp scheduling efficiently hides memory latency.
-\end{itemize}
+
 
 
 \end{enumerate}

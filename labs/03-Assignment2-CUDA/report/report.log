@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.11.30)  14 APR 2026 19:25
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.11.30)  14 APR 2026 19:50
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -652,47 +652,50 @@ LaTeX Font Info:    Font shape `MDB/mdbch/m/n' will be
 (Font)              scaled to size 7.68005pt on input line 40.
 LaTeX Font Info:    Font shape `MDB/mdbch/m/n' will be
 (Font)              scaled to size 5.76004pt on input line 40.
-LaTeX Font Info:    Trying to load font information for TS1+mdbch on input line 44.
+LaTeX Font Info:    Trying to load font information for TS1+mdbch on input line 43.
  (/usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 File: ts1mdbch.fd 2013/08/29 Fontinst v1.933 font definitions for TS1/mdbch.
 )
 LaTeX Font Info:    Font shape `TS1/mdbch/m/n' will be
-(Font)              scaled to size 10.51207pt on input line 44.
+(Font)              scaled to size 10.51207pt on input line 43.
 LaTeX Font Info:    Font shape `T1/cmtt/m/n' will be
-(Font)              scaled to size 11.73846pt on input line 44.
+(Font)              scaled to size 11.73846pt on input line 43.
 
-Overfull \hbox (21.21103pt too wide) in paragraph at lines 48--49
+Overfull \hbox (21.21103pt too wide) in paragraph at lines 47--48
 []\T1/mdbch/b/n/10.95 GPU V2 (Con-stant Mem-ory + No Mod-ulo): \T1/mdbch/m/n/10.95 Moves the con-vo-lu-tion ker-nel to \T1/cmtt/m/n/10.95 __constant__
  []
 
+LaTeX Font Info:    Font shape `T1/cmtt/b/n' in size <10.95> not available
+(Font)              Font shape `T1/cmtt/bx/n' tried instead on input line 55.
+LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10.95> not available
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 55.
+LaTeX Font Info:    Font shape `T1/cmtt/m/n' will be
+(Font)              scaled to size 11.73846pt on input line 55.
 <performance_all_versions_comparison.png, id=4, 1734.48pt x 867.24pt>
 File: performance_all_versions_comparison.png Graphic file (type png)
 <use performance_all_versions_comparison.png>
-Package pdftex.def Info: performance_all_versions_comparison.png  used on input line 57.
+Package pdftex.def Info: performance_all_versions_comparison.png  used on input line 67.
 (pdftex.def)             Requested size: 452.9679pt x 226.48279pt.
-<v4_speedup_vs_tile_size.png, id=6, 1011.78pt x 578.16pt>
-File: v4_speedup_vs_tile_size.png Graphic file (type png)
-<use v4_speedup_vs_tile_size.png>
-Package pdftex.def Info: v4_speedup_vs_tile_size.png  used on input line 66.
-(pdftex.def)             Requested size: 362.37569pt x 207.06998pt.
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
 
 
 [1
 
-{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc} <./performance_all_versions_comparison.png>]
-LaTeX Font Info:    Font shape `T1/cmtt/b/n' in size <10.95> not available
-(Font)              Font shape `T1/cmtt/bx/n' tried instead on input line 79.
-LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 79.
-LaTeX Font Info:    Font shape `T1/cmtt/m/n' will be
-(Font)              scaled to size 11.73846pt on input line 79.
+{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}]
+<v4_speedup_vs_tile_size.png, id=18, 1011.78pt x 578.16pt>
+File: v4_speedup_vs_tile_size.png Graphic file (type png)
+<use v4_speedup_vs_tile_size.png>
+Package pdftex.def Info: v4_speedup_vs_tile_size.png  used on input line 82.
+(pdftex.def)             Requested size: 362.37569pt x 207.06998pt.
 
 
-[2 <./v4_speedup_vs_tile_size.png>]
+[2 <./performance_all_versions_comparison.png> <./v4_speedup_vs_tile_size.png>]
 LaTeX Font Info:    Font shape `T1/mdbch/m/n' will be
-(Font)              scaled to size 13.82408pt on input line 89.
+(Font)              scaled to size 13.82408pt on input line 96.
 LaTeX Font Info:    Font shape `T1/mdbch/b/n' will be
-(Font)              scaled to size 13.82408pt on input line 89.
+(Font)              scaled to size 13.82408pt on input line 96.
  Excluding 'comment' comment.
 
 [3] (./report.aux)
@@ -704,18 +707,18 @@ Package rerunfilecheck Info: File `report.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 13678 strings out of 473190
- 215013 string characters out of 5715799
+ 13675 strings out of 473190
+ 214973 string characters out of 5715799
  617304 words of memory out of 5000000
- 36714 multiletter control sequences out of 15000+600000
+ 36713 multiletter control sequences out of 15000+600000
  595381 words of font info for 91 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 85i,11n,133p,591b,577s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchri8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chb8t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on report.pdf (3 pages, 1143764 bytes).
+ 85i,11n,133p,1055b,556s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchri8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chb8t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr8t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sftt1095.pfb>
+Output written on report.pdf (3 pages, 1148307 bytes).
 PDF statistics:
- 73 PDF objects out of 1000 (max. 8388607)
- 49 compressed objects within 1 object stream
- 12 named destinations out of 1000 (max. 500000)
+ 76 PDF objects out of 1000 (max. 8388607)
+ 50 compressed objects within 1 object stream
+ 10 named destinations out of 1000 (max. 500000)
  11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -10,7 +10,7 @@
 \usepackage{hyperref}
 \usepackage{graphicx} % Required for inserting images (put this in your preamble)
 \usepackage{subfig}
-
+\usepackage{comment}
 
 \makeatletter
 \renewcommand{\maketitle}{
@@ -51,7 +51,7 @@
 \begin{figure}[h]
     \centering
     % Adjust the width if needed (e.g., 0.9\textwidth or \linewidth)
-    \includegraphics[width=\textwidth]{combined_performance_plots.png}
+    \includegraphics[width=\textwidth]{performance_v4_comparison.png}
     \caption{Performance comparison of CUDA optimization layers. \textbf{Left:} Log-log plot showing execution time versus grid size, highlighting the algebraic scaling advantage of the GPU implementations. \textbf{Right:} Grouped bar chart detailing the speedup factor of each GPU kernel relative to the sequential CPU baseline for large grid sizes.}
     \label{fig:performance_plots}
 \end{figure}
@@ -60,12 +60,14 @@ Now, we plot the relative speepd performance as a function of the image size and
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{tile_speedup_comparison.png}
+    \includegraphics[width=\textwidth]{performance_v4_comparison.png}
     \caption{Comparison of the overall speedup factor (V3 optimized kernel vs. Sequential CPU) across different thread block tile sizes. A tile size of $16 \times 16$ yields the optimal hardware saturation for large grid sizes.}
     \label{fig:tile_comparison}
 \end{figure}
 
 \pagebreak
+
+\begin{comment}
 
 \begin{table}[h]
 \centering
@@ -104,6 +106,7 @@ $N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & Speedup($v3$
 \begin{table}[h]
 \centering
 \caption{Performance Metrics for Tile Size 32}
+\resizebox{\textwidth}{!}{
 \begin{tabular}{rcccccc}
 \hline
 $N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & Speedup($v3$) \\
@@ -116,6 +119,64 @@ $N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & Speedup($v3$
 4096 & 5205.6769 & 2.7460 & 1.3746 & 1.2213 & 0.6974 & 7464.71 \\
 \hline
 \end{tabular}
+}
+\end{table}
+
+\end{comment}
+
+
+
+\begin{table}[h]
+\centering
+\caption{Performance Metrics with Uncertainty (Tile Size 8)}
+\label{tab:lenia_performance_v3_v4_tile8}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{rccccccc}
+\hline
+$N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & $T_{v4}(f)$ & Speedup($v4$) \\ \hline
+128  & 5.0847    & $0.0465 \pm 0.0983$ & $0.0049 \pm 0.0007$ & $0.0053 \pm 0.0040$ & $0.0031 \pm 0.0001$ & $0.0035 \pm 0.0009$ & 1472.12 \\
+256  & 20.3207   & $0.0171 \pm 0.0008$ & $0.0098 \pm 0.0005$ & $0.0077 \pm 0.0003$ & $0.0065 \pm 0.0003$ & $0.0064 \pm 0.0003$ & 3153.43 \\
+512  & 81.3130   & $0.0501 \pm 0.0035$ & $0.0330 \pm 0.0015$ & $0.0283 \pm 0.0095$ & $0.0223 \pm 0.0003$ & $0.0218 \pm 0.0005$ & 3723.12 \\
+1024 & 325.2871  & $0.1750 \pm 0.0014$ & $0.1309 \pm 0.0155$ & $0.0873 \pm 0.0018$ & $0.0828 \pm 0.0004$ & $0.0803 \pm 0.0009$ & 4052.11 \\
+2048 & 1301.3061 & $0.6970 \pm 0.0009$ & $0.4971 \pm 0.0011$ & $0.3512 \pm 0.0008$ & $0.3206 \pm 0.0003$ & $0.3125 \pm 0.0002$ & 4163.95 \\
+4096 & 5205.5831 & $2.7612 \pm 0.0020$ & $1.9561 \pm 0.0059$ & $1.3998 \pm 0.0025$ & $1.2719 \pm 0.0001$ & $1.2382 \pm 0.0001$ & 4204.24 \\ \hline
+\end{tabular}
+}
+\end{table}
+
+
+\begin{table}[h]
+\centering
+\caption{Performance Metrics with Uncertainty (Tile Size 16)}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{rccccccc}
+\hline
+$N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & $T_{v4}(f)$ & Speedup($v4$) \\ \hline
+128  & 5.0795    & $0.0466 \pm 0.0961$ & $0.0094 \pm 0.0152$ & $0.0037 \pm 0.0001$ & $0.0028 \pm 0.0001$ & $0.0030 \pm 0.0004$ & 1670.89 \\
+256  & 20.3176   & $0.0170 \pm 0.0008$ & $0.0076 \pm 0.0003$ & $0.0053 \pm 0.0007$ & $0.0050 \pm 0.0019$ & $0.0045 \pm 0.0001$ & 4557.75 \\
+512  & 81.2717   & $0.0500 \pm 0.0057$ & $0.0239 \pm 0.0027$ & $0.0155 \pm 0.0007$ & $0.0128 \pm 0.0013$ & $0.0123 \pm 0.0011$ & 6610.68 \\
+1024 & 325.1207  & $0.1760 \pm 0.0072$ & $0.0890 \pm 0.0061$ & $0.0744 \pm 0.0226$ & $0.0454 \pm 0.0012$ & $0.0445 \pm 0.0029$ & 7322.62 \\
+2048 & 1300.6583 & $0.6915 \pm 0.0103$ & $0.3539 \pm 0.0108$ & $0.2934 \pm 0.0207$ & $0.1729 \pm 0.0068$ & $0.1732 \pm 0.0200$ & 7513.91 \\
+4096 & 5203.7136 & $2.7695 \pm 0.0163$ & $1.3920 \pm 0.0069$ & $1.2082 \pm 0.0033$ & $0.6839 \pm 0.0028$ & $0.6615 \pm 0.0035$ & 7866.53 \\ \hline
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Performance Metrics with Uncertainty (Tile Size 32)}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{rccccccc}
+\hline
+$N$ & $T_{seq}$ & $T_{naive}$ & $T_{v1}$ & $T_{v2}$ & $T_{v3}(f)$ & $T_{v4}(f)$ & Speedup($v4$) \\ \hline
+128  & 5.1617    & $0.0278 \pm 0.0470$ & $0.0081 \pm 0.0005$ & $0.0053 \pm 0.0003$ & $0.0049 \pm 0.0014$ & $0.0049 \pm 0.0012$ & 1058.81 \\
+256  & 20.3258   & $0.0191 \pm 0.0060$ & $0.0077 \pm 0.0015$ & $0.0048 \pm 0.0001$ & $0.0040 \pm 0.0001$ & $0.0040 \pm 0.0001$ & 5081.45 \\
+512  & 81.2846   & $0.0478 \pm 0.0019$ & $0.0271 \pm 0.0011$ & $0.0189 \pm 0.0078$ & $0.0150 \pm 0.0020$ & $0.0153 \pm 0.0046$ & 5314.11 \\
+1024 & 325.0540  & $0.1730 \pm 0.0014$ & $0.0928 \pm 0.0114$ & $0.0585 \pm 0.0114$ & $0.0489 \pm 0.0019$ & $0.0478 \pm 0.0057$ & 6793.61 \\
+2048 & 1300.5371 & $0.6897 \pm 0.0022$ & $0.3611 \pm 0.0023$ & $0.2248 \pm 0.0011$ & $0.1843 \pm 0.0014$ & $0.1742 \pm 0.0003$ & 7464.55 \\
+4096 & 5205.6769 & $2.7613 \pm 0.0105$ & $1.4221 \pm 0.0083$ & $0.9046 \pm 0.0065$ & $0.7161 \pm 0.0080$ & $0.6881 \pm 0.0083$ & 7564.73 \\ \hline
+\end{tabular}
+}
 \end{table}
 
 The staggered implementation of CUDA optimizations resulted in a peak speedup of nearly $7700\times$ over the sequential CPU baseline. The impact of each architectural consideration can be summarized as follows:

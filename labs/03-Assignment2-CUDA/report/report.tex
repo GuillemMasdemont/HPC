@@ -70,7 +70,13 @@ The staggered implementation of CUDA optimizations resulted in a peak speedup of
 
 \pagebreak
 
-\item We now present results for part 2...  
+\item We now present results for part 2. In this section, we compare an improved CPU baseline against advanced GPU variants. We consider the following implementations:
+
+\begin{itemize}
+  \item \textbf{CPU Sequential + OpenMP (\texttt{evolve\_lenia\_seq\_v2}):} Refactors the original CPU baseline and parallelizes dominant loops with OpenMP. This version is used as the reference $T_{seq}$ for speedup calculations.
+  \item \textbf{GPU V5 (Autotuned FP32, \texttt{evolve\_lenia\_v5}):} Evaluates several CUDA thread-block geometries at startup and automatically selects the fastest configuration for the target GPU, then runs the full FP32 simulation with that tile shape.
+  \item \textbf{GPU V6 (Dual-GPU Domain Split, \texttt{evolve\_lenia\_v6}):} Splits the world horizontally across two GPUs and exchanges halo rows every step (peer-to-peer when available, otherwise host-staged), enabling larger throughput than single-device execution.
+\end{itemize}
 
 
 

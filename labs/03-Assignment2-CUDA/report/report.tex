@@ -73,9 +73,7 @@ The left plot (log scale) shows the sequential CPU reaching $\sim$5000\,s at $40
 
 We decided to pursue an incremental building approach: the Naive GPU already delivers $\sim$100--500$\times$ through parallelism alone. Shared memory (V1) and constant memory with if/else wrapping (V2) reduce redundant loads and arithmetic overhead incrementally. Then we switched to FP32 (V3) is the single largest jump, roughly doubling bandwidth and unlocking full FP32 throughput. Finally, kernel fusion with ping-pong buffers and a texture-based growth LUT (V4) eliminates the intermediate write-back and costly \texttt{expf} calls to reach peak performance. V5 matches V3 via auto-tuned block shapes, we obtained that the best tiling performance is achieved using a 32$\times$16 sized blocks, though the improvement is barely noticeable. Benchmarks were run over 10 simulations for the GPU variants and 5 for the CPU ones. A table of contents with the mean values and uncertainties is presented in the Appendix. 
 
-The version V6 (2 GPUs) builds on the Naive baseline rather than V3/V4, and we split the grid horizontally across two devices. Halo-exchange overhead limits scaling, so V6 trails the single-GPU optimised variants and only converges at the largest grid sizes where compute dominates transfer cost. This could be further improved by using the techniques used for the single GPU version. 
-
-Now, we plot the relative speed performance as a function of the image size and the tile size: 
+The version V6 (2 GPUs) builds on the Naive baseline rather than V3/V4, and we split the grid horizontally across two devices. Halo-exchange overhead limits scaling, so V6 trails the single-GPU optimised variants and only converges at the largest grid sizes where compute dominates transfer cost. This could be further improved by using the techniques used for the single GPU version. Now, we plot the relative speed performance as a function of the image size and the tile size: 
 
 \begin{figure}[htbp]
     \centering
@@ -84,7 +82,7 @@ Now, we plot the relative speed performance as a function of the image size and 
     \label{fig:tile_comparison}
 \end{figure}
 
-The staggered implementation of CUDA optimizations resulted in a peak speedup of nearly $7700\times$ over the sequential CPU baseline. The impact of each architectural consideration can be summarized as follows:
+The best performance is achieved using tile sizes of $N = 16$. 
 
 
 

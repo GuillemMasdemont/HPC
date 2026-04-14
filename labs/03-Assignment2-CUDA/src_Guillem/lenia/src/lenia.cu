@@ -275,7 +275,7 @@ __global__ void convolve2d_kernel_v1(const double * __restrict__ world,
 }
 
 __global__ void evolve_kernel_v1(double * __restrict__ world, const double * __restrict__ tmp, int rows, int cols, double dt) {
-    const int c = blockIdx.x * TILE + threadIdx.x; //TILE improves slightly the results over blockDim.y
+    const int c = blockIdx.x * TILE + threadIdx.x; 
     const int r = blockIdx.y * TILE + threadIdx.y;
 
     if (r < rows && c < cols) {
@@ -524,12 +524,10 @@ float *evolve_lenia_v3(const unsigned int rows, const unsigned int cols,
 
     generate_kernel_float(h_kernel_f, kernel_size);
 
-    // Because place_orbium likely expects a double array, we populate double first
     for (unsigned int o = 0; o < num_orbiums; o++) {
         h_world_d = place_orbium(h_world_d, rows, cols, orbiums[o].row, orbiums[o].col, orbiums[o].angle);
     }
 
-    // Cast double to float for the device upload
     for (unsigned int i = 0; i < rows * cols; i++) {
         h_world_f[i] = (float)h_world_d[i];
     }
@@ -556,6 +554,184 @@ float *evolve_lenia_v3(const unsigned int rows, const unsigned int cols,
     cudaFree(d_world); cudaFree(d_tmp); free(h_kernel_f);
     return h_world_f;
 }
+
+// -------------------------------------------------------------------------
+// 6. GPU V4: KERNEL FUSION (Ping-Pong) + TEXTURE LUT ONLY
+//    Features kept:
+//      A. Kernel fusion (convolve + evolve in one kernel)
+//      B. Ping-pong buffers (d_tmp removed, pointers swapped)
+//      F. Growth function LUT via 1D texture (memoisation)
+//    Features removed: Bank-conflict padding, smem cell reuse, #pragma unroll
+// -------------------------------------------------------------------------
+
+#define GROWTH_LUT_SIZE 1024
+
+__constant__ float d_kernel_const_v4[MAX_KERNEL_SIZE * MAX_KERNEL_SIZE];
+
+__global__ void lenia_step_kernel_v4(
+    const float * __restrict__ world_in,
+    float       * __restrict__ world_out,
+    int rows, int cols,
+    int ksize,
+    float dt,
+    cudaTextureObject_t growth_tex)
+{
+    const int halo     = ksize / 2;
+    const int shared_w = TILE + 2 * halo; // No bank padding (+1 removed)
+    const int shared_h = TILE + 2 * halo;
+
+    extern __shared__ float smem_v4[];
+
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int out_col0 = blockIdx.x * TILE;
+    const int out_row0 = blockIdx.y * TILE;
+
+    // Phase 1 -- collaborative halo load 
+    for (int dy = ty; dy < shared_h; dy += TILE)
+    {
+        for (int dx = tx; dx < shared_w; dx += TILE) 
+        {
+            int gr = out_row0 - halo + dy;
+            if      (gr <    0) gr += rows;
+            else if (gr >= rows) gr -= rows;
+
+            int gc = out_col0 - halo + dx;
+            if      (gc <    0) gc += cols;
+            else if (gc >= cols) gc -= cols;
+
+            smem_v4[dy * shared_w + dx] = world_in[gr * cols + gc];
+        }
+    }
+    __syncthreads();
+
+    // Phase 2 -- fused convolution + evolution
+    const int out_col = out_col0 + tx;
+    const int out_row = out_row0 + ty;
+
+    if (out_row < rows && out_col < cols)
+    {
+        float conv = 0.0f;
+
+        // Standard V3 loop layout (no unroll optimization)
+        for (int ki = ksize - 1, si = 0; ki >= 0; ki--, si++) {
+            for (int kj = ksize - 1, sj = 0; kj >= 0; kj--, sj++) {
+                conv += d_kernel_const_v4[ki * ksize + kj] *
+                        smem_v4[(ty + si) * shared_w + (tx + sj)];
+            }
+        }
+
+        // Reverting current lookup to Global Memory read instead of smem array
+        float current = world_in[out_row * cols + out_col];
+
+        // F: growth via 1D texture (hardware lerp)
+        float growth = tex1D<float>(growth_tex, 0.5f + conv * (float)(GROWTH_LUT_SIZE - 1));
+
+        float v = current + dt * growth;
+        world_out[out_row * cols + out_col] = fminf(1.0f, fmaxf(0.0f, v));
+    }
+}
+
+static cudaTextureObject_t create_growth_texture_v4(cudaArray_t *out_array)
+{
+    float h_lut[GROWTH_LUT_SIZE];
+    for (int i = 0; i < GROWTH_LUT_SIZE; i++)
+    {
+        float u = (float)i / (float)(GROWTH_LUT_SIZE - 1);
+        float z = (u - 0.15f) / 0.015f;
+        h_lut[i] = -1.0f + 2.0f * expf(-0.5f * z * z);
+    }
+
+    cudaChannelFormatDesc chan = cudaCreateChannelDesc<float>();
+    CUDA_CHECK(cudaMallocArray(out_array, &chan, GROWTH_LUT_SIZE, 1));
+    CUDA_CHECK(cudaMemcpy2DToArray(*out_array, 0, 0,
+                                   h_lut, GROWTH_LUT_SIZE * sizeof(float),
+                                   GROWTH_LUT_SIZE * sizeof(float), 1,
+                                   cudaMemcpyHostToDevice));
+
+    cudaResourceDesc res = {};
+    res.resType             = cudaResourceTypeArray;
+    res.res.array.array     = *out_array;
+
+    cudaTextureDesc tex = {};
+    tex.addressMode[0]   = cudaAddressModeClamp;
+    tex.filterMode       = cudaFilterModeLinear;
+    tex.readMode         = cudaReadModeElementType;
+    tex.normalizedCoords = 0;                      
+
+    cudaTextureObject_t tex_obj = 0;
+    CUDA_CHECK(cudaCreateTextureObject(&tex_obj, &res, &tex, nullptr));
+    return tex_obj;
+}
+
+float *evolve_lenia_v4(const unsigned int rows, const unsigned int cols,
+                       const unsigned int steps, const float dt,
+                       const unsigned int kernel_size,
+                       const struct orbium_coo *orbiums,
+                       const unsigned int num_orbiums)
+{
+    if (kernel_size > MAX_KERNEL_SIZE) exit(EXIT_FAILURE);
+
+    const size_t world_bytes  = rows * cols * sizeof(float);
+    const size_t kernel_bytes = kernel_size * kernel_size * sizeof(float);
+
+    double *h_world_d = (double *)calloc(rows * cols, sizeof(double));
+    float  *h_kernel  = (float  *)malloc(kernel_bytes);
+    float  *h_world   = (float  *)calloc(rows * cols, sizeof(float));
+
+    generate_kernel_float(h_kernel, kernel_size);
+
+    for (unsigned int o = 0; o < num_orbiums; o++)
+        h_world_d = place_orbium(h_world_d, rows, cols,
+                                 orbiums[o].row, orbiums[o].col, orbiums[o].angle);
+    for (unsigned int i = 0; i < rows * cols; i++)
+        h_world[i] = (float)h_world_d[i];
+    free(h_world_d);
+
+    // B. Ping-pong device buffers -- d_tmp is completely gone.
+    float *d_buf[2];
+    CUDA_CHECK(cudaMalloc(&d_buf[0], world_bytes));
+    CUDA_CHECK(cudaMalloc(&d_buf[1], world_bytes));
+    CUDA_CHECK(cudaMemcpy(d_buf[0], h_world, world_bytes, cudaMemcpyHostToDevice));
+
+    CUDA_CHECK(cudaMemcpyToSymbol(d_kernel_const_v4, h_kernel, kernel_bytes));
+    free(h_kernel);
+
+    // F. Build growth LUT texture
+    cudaArray_t growth_array;
+    cudaTextureObject_t growth_tex = create_growth_texture_v4(&growth_array);
+
+    const int halo = (int)(kernel_size / 2);
+    // Padding calculation removed -- explicitly just tile_ext * tile_ext
+    const size_t smem_bytes = (TILE + 2*halo) * (TILE + 2*halo) * sizeof(float);
+
+    dim3 block(TILE, TILE);
+    dim3 grid((cols + TILE - 1) / TILE, (rows + TILE - 1) / TILE);
+
+    const int final_buf = (int)(steps & 1);
+
+    for (unsigned int step = 0; step < steps; step++)
+    {
+        const int in_buf  = (int)(step & 1);
+        const int out_buf = 1 - in_buf;
+
+        lenia_step_kernel_v4<<<grid, block, smem_bytes>>>(
+            d_buf[in_buf], d_buf[out_buf],
+            (int)rows, (int)cols, (int)kernel_size, dt, growth_tex);
+        CUDA_CHECK(cudaGetLastError());
+    }
+
+    CUDA_CHECK(cudaDeviceSynchronize());
+    CUDA_CHECK(cudaMemcpy(h_world, d_buf[final_buf], world_bytes, cudaMemcpyDeviceToHost));
+
+    cudaFree(d_buf[0]);
+    cudaFree(d_buf[1]);
+    cudaDestroyTextureObject(growth_tex);
+    cudaFreeArray(growth_array);
+
+    return h_world;  
+}
+
 
 // -------------------------------------------------------------------------
 // 5. GPU V4: Block-shape experiment (FP32 + constant memory)

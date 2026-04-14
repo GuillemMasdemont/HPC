@@ -40,23 +40,26 @@
   \item We parallelize the algorithm and present $5$ versions that keep optimizing. We compare the speedup performance with the baseline model. We consider the following $5$ models: 
 
 
-\begin{itemize} 
-    \item \textbf{GPU Naive:} An embarrassingly parallel implementation on CUDA by blocks (see \texttt{heat1.cu}). 
-    \item \textbf{GPU Shared Memory (V1):} We use \texttt{\_\_shared\_\_} memory to allocate the halo pixels that are not inside the block in the computation (see \texttt{heat2.cu} and \texttt{heat3.cu}).  
-    \item \textbf{GPU V2 (Constant + No Modulo):} Relocates the kernel to \texttt{\_\_constant\_\_} memory for hardware broadcasting and replaces expensive modulo (\texttt{\%}) operations with \texttt{if/else} bounds checking to reduce arithmetic costs.
-    \item \textbf{GPU V3 (FP32):} Transitions from 64-bit to 32-bit precision. By this, we unlock the GPU's dominant FP32 cores and doubles effective memory bandwidth.
-    \item \textbf{GPU V4 (Fused + Texture):} Combines multiple memory accesses into a single operation and utilizes texture memory for spatial locality, further enhancing performance.
+\begin{itemize}
+    \item \textbf{GPU Naive:} A straightforward embarrassingly parallel CUDA implementation where each thread computes one output cell, with global memory accesses and inefficient \texttt{\%} modulo for toroidal wrapping.
+
+    \item \textbf{GPU V1 (Shared Memory):} Loads a halo-padded tile of the world into \texttt{\_\_shared\_\_} memory before the convolution, replacing repeated global memory reads with fast on-chip accesses.
+
+    \item \textbf{GPU V2 (Constant Memory + No Modulo):} Moves the convolution kernel to \texttt{\_\_constant\_\_} memory for cached hardware broadcasting, and replaces modulo boundary \texttt{\%} wrapping with cheaper \texttt{if/else} bounds checks.
+
+    \item \textbf{GPU V3 (FP32):} Switches from \texttt{double} to \texttt{float} throughout, unlocking the GPU's more numerous FP32 cores and effectively doubling usable memory bandwidth.
+
+    \item \textbf{GPU V4 (Kernel Fusion + Texture LUT):} Fuses the convolution and evolution steps into a single kernel pass with ping-pong buffers, eliminating the intermediate \texttt{d\_tmp} write-back. The growth function is precomputed into a 1D texture object (\texttt{GROWTH\_LUT\_SIZE = 1024}), replacing per-thread \texttt{expf} calls with a hardware-interpolated lookup.
 \end{itemize}
 
 \begin{figure}[h]
     \centering
-    % Adjust the width if needed (e.g., 0.9\textwidth or \linewidth)
-    \includegraphics[width=\textwidth]{performance_v4_comparison.png}
+    \includegraphics[width=\textwidth]{performance_all_versions_comparison.png}
     \caption{Performance comparison of CUDA optimization layers. \textbf{Left:} Log-log plot showing execution time versus grid size, highlighting the algebraic scaling advantage of the GPU implementations. \textbf{Right:} Grouped bar chart detailing the speedup factor of each GPU kernel relative to the sequential CPU baseline for large grid sizes.}
     \label{fig:performance_plots}
 \end{figure}
 
-Now, we plot the relative speepd performance as a function of the image size and the tile size: 
+Now, we plot the relative speed performance as a function of the image size and the tile size: 
 
 \begin{figure}[htbp]
     \centering

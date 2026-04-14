@@ -82,13 +82,9 @@ The version V6 (2 GPUs) builds on the Naive baseline rather than V3/V4, and we s
     \label{fig:tile_comparison}
 \end{figure}
 
-The best performance is achieved using tile sizes of $N = 16$. 
+The best performance is achieved using tile sizes of $N=16^2$. This leads to the best balance between multiprocessing unit occupancy and shared memory pressure. The larger tiles ($N=32^2$) inflate the halo-padded shared memory region and reduces the number of concurrent blocks per multiprocessing unit.  For smaller tiles ($N=8$) we lack sufficient parallelism to saturate it.
 
 
-
-
-
-\pagebreak 
 
 
 \section*{Appendix: Recollected data}

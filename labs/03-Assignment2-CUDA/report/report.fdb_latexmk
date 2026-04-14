@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1776189212.09768 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" "report.pdf" "report" 1776189215.36977 0
-  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" 1776189211.79827 11291 e29fd2faeab359b1c8e51a15dc2ee839 ""
+["pdflatex"] 1776190660.41251 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" "report.pdf" "report" 1776190663.58511 0
+  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" 1776190656.91609 11590 80a3261ace45f84c347bf5f52d6df405 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1136849721 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc" 1276641224 6938 5135be6a8802f13a7faf296d1959a1ab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -120,9 +120,9 @@
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1764491721 3345742 9759ea87a28497a5108231f989ca3eaf ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
   "performance_all_versions_comparison.png" 1776187215.65774 868778 d88de41100649f5e3b51824c67558c6b ""
-  "report.aux" 1776189215.22217 2057 4584b040d317f6719ed5d32cec871730 "pdflatex"
-  "report.out" 1776189212.71687 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
-  "report.tex" 1776189211.79827 11291 e29fd2faeab359b1c8e51a15dc2ee839 ""
+  "report.aux" 1776190663.45461 2057 4584b040d317f6719ed5d32cec871730 "pdflatex"
+  "report.out" 1776190661.10102 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "report.tex" 1776190656.91609 11590 80a3261ace45f84c347bf5f52d6df405 ""
   "v4_speedup_vs_tile_size.png" 1776155296.04158 347473 f7364f999c4f3335aa92ce9d35569c23 ""
   (generated)
   "report.aux"

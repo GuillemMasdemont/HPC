@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1776154800.85089 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" "report.pdf" "report" 1776154803.47225 0
-  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" 1776154751.60086 8627 bc45451cc653d93e5813c21b5c16c28e ""
+["pdflatex"] 1776156418.02261 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" "report.pdf" "report" 1776156421.24429 0
+  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/03-Assignment2-CUDA/report/report.tex" 1776156335.52854 8723 93def3e1add6946e8304016dde086730 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc" 1136849721 2971 def0b6c1f0b107b3b936def894055589 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc" 1276641224 6938 5135be6a8802f13a7faf296d1959a1ab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -118,10 +118,11 @@
   "/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1764491816 5467155 19efa205003f9ecad95fbbaa6ff24da1 ""
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1764491721 3345742 9759ea87a28497a5108231f989ca3eaf ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
-  "performance_v4_comparison.png" 1776154797.42876 743518 ef9857ae5e2de5da05672f1858b8b00f ""
-  "report.aux" 1776154803.33169 2321 005e38adb7cfaeb506bd099bf6e098dc "pdflatex"
-  "report.out" 1776154801.49486 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
-  "report.tex" 1776154751.60086 8627 bc45451cc653d93e5813c21b5c16c28e ""
+  "performance_v4_comparison.png" 1776156417.56004 716016 19eb4f15b054c41b1537f43301ed7a57 ""
+  "report.aux" 1776156421.0983 2057 4311ea9aaebd40da5007929f5d3f7f68 "pdflatex"
+  "report.out" 1776156418.75445 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "report.tex" 1776156335.52854 8723 93def3e1add6946e8304016dde086730 ""
+  "v4_speedup_vs_tile_size.png" 1776155296.04158 347473 f7364f999c4f3335aa92ce9d35569c23 ""
   (generated)
   "report.aux"
   "report.log"

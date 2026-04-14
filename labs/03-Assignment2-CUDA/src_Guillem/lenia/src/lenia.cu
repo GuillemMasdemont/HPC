@@ -25,9 +25,9 @@
         }                                                                       \
     } while (0)
 
-// -------------------------------------------------------------------------
+
 // 1. CPU SEQUENTIAL CASE
-// -------------------------------------------------------------------------
+
 
 #define w_mac(r, c) (w[(r) * kernel_size + (c)])
 #define input_mac(r, c) (input[((r) % rows) * cols + ((c) % cols)])
@@ -131,9 +131,8 @@ double *evolve_lenia_seq(const unsigned int rows, const unsigned int cols, const
     return world;
 }
 
-// -------------------------------------------------------------------------
+
 // 2. GPU NAIVE CUDA
-// -------------------------------------------------------------------------
 
 __device__ inline double gauss_dev(double x, double mu, double sigma) {
     return exp(-0.5 * pow((x - mu) / sigma, 2.0));
@@ -231,9 +230,9 @@ double *evolve_lenia_cuda(const unsigned int rows, const unsigned int cols, cons
     return h_world;
 }
 
-// -------------------------------------------------------------------------
+
 // 3. GPU V1: SHARED MEMORY 
-// -------------------------------------------------------------------------
+
 
 __global__ void convolve2d_kernel_v1(const double * __restrict__ world,
                                   double       * __restrict__ tmp,
@@ -326,9 +325,9 @@ double *evolve_lenia_v1(const unsigned int rows, const unsigned int cols,
     return h_world;
 }
 
-// -------------------------------------------------------------------------
+
 // 4. GPU V2: OPTIMIZED DOUBLE (Constant Mem + If/Else)
-// -------------------------------------------------------------------------
+
 
 __constant__ double d_kernel_const_v2[MAX_KERNEL_SIZE * MAX_KERNEL_SIZE];
 
@@ -419,9 +418,9 @@ double *evolve_lenia_v2(const unsigned int rows, const unsigned int cols,
     return h_world;
 }
 
-// -------------------------------------------------------------------------
+
 // 5. GPU V3: OPTIMIZED FLOAT (FP32 precision + Constant Mem + If/Else)
-// -------------------------------------------------------------------------
+
 
 static float *generate_kernel_float(float *K, unsigned int size) {
     float mu = 0.5f, sigma = 0.15f;
@@ -555,14 +554,8 @@ float *evolve_lenia_v3(const unsigned int rows, const unsigned int cols,
     return h_world_f;
 }
 
-// -------------------------------------------------------------------------
+
 // 6. GPU V4: KERNEL FUSION (Ping-Pong) + TEXTURE LUT ONLY
-//    Features kept:
-//      A. Kernel fusion (convolve + evolve in one kernel)
-//      B. Ping-pong buffers (d_tmp removed, pointers swapped)
-//      F. Growth function LUT via 1D texture (memoisation)
-//    Features removed: Bank-conflict padding, smem cell reuse, #pragma unroll
-// -------------------------------------------------------------------------
 
 #define GROWTH_LUT_SIZE 1024
 
@@ -733,17 +726,8 @@ float *evolve_lenia_v4(const unsigned int rows, const unsigned int cols,
 }
 
 
-// -------------------------------------------------------------------------
 // 5. GPU V4: Block-shape experiment (FP32 + constant memory)
-// Reuses d_kernel_const_v3 and growth_lenia_f / gauss_f from V3 above.
-//
-// Thread-block configs (all <= 1024 threads):
-//   0: 32x32 = 1024  square baseline
-//   1: 64x16 = 1024  wide rect  -- better coalescing along columns
-//   2: 16x64 = 1024  tall rect  -- more threads per row
-//   3: 32x16 =  512  half-warp  -- smaller block; helps when the shared
-//                                  memory tile is large enough to prevent
-//                                  two 1024-thread blocks fitting on one SM
+
 
 template<int TILE_X, int TILE_Y>
 __global__ void convolve_v5(const float * __restrict__ world,
@@ -973,14 +957,8 @@ float *evolve_lenia_v5(const unsigned int rows, const unsigned int cols,
     return h_world_f;
 }
 
-// -------------------------------------------------------------------------
 // 6. GPU V5: Dual-GPU simulation
-//    Splits the world horizontally: GPU 0 owns rows [0 .. half-1],
-//    GPU 1 owns rows [half .. rows-1].  Each device allocates a padded slab
-//    (halo rows on both sides) and the two exchange boundary rows via
-//    cudaMemcpyPeer after every step (falls back to host-staged copy if
-//    peer access is unavailable).
-// -------------------------------------------------------------------------
+
 
 static void try_enable_peer(int from, int to)
 {
@@ -994,9 +972,6 @@ static void try_enable_peer(int from, int to)
     }
 }
 
-// Convolution over a vertically-padded slab.
-// The slab has `full_rows = halo + local_rows + halo` rows in memory.
-// Output is written only to the interior rows [halo .. halo+local_rows-1].
 __global__ void convolve_v6(const float * __restrict__ slab,
                               float       * __restrict__ tmp,
                               int local_rows, int cols,
@@ -1241,9 +1216,8 @@ double *evolve_lenia_v6(const unsigned int rows, const unsigned int cols,
     return h_result;
 }
 
-// -------------------------------------------------------------------------
+
 //  CPU IMPRovements
-// -------------------------------------------------------------------------
 
 inline double gauss_cpu_v2(double x, double mu, double sigma)
 {

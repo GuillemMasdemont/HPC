@@ -6,7 +6,7 @@
 
   <img src="figures/dense-matrix-representations.png" alt="Dense matrix representations" width="75%" />
 
-- number of matrix elements ```rows``` $\times$ ```cols```
+- number of matrix elements ```h``` $\times$ ```w```
 - 1D indexing
 - 2D indexing
 
@@ -17,11 +17,11 @@
     - there is no guarantee that rows will be adjacent to each other in memory!å
 
     ```C
-    float **m = (float **)malloc(rows * sizeof(float *));
-    for (int i = 0; i < rows; i++)
-      m[i] = (float *)malloc(cols * sizeof(float));
+    float **m = (float **)malloc(h * sizeof(float *));
+    for (int i = 0; i < h; i++)
+      m[i] = (float *)malloc(w * sizeof(float));
     ...
-    for (int i = 0; i < rows; i++)
+    for (int i = 0; i < h; i++)
       free(m[i]);
     free (m);
     ```
@@ -30,16 +30,16 @@
 
   - contiguous memory approach
     - allocate an array of matrix elements (```mData```)
-    - allocate array of pointers to beginning of rows (```m```)
+    - allocate array of pointers to beginning of h (```m```)
     - access to elements: ```m[row][col]```
     - whole matrix data is stored in continuous memory space
     - a matrix can be easily transferred to a GPU or another compute node
 
     ```C
-    float *mData = (float *)malloc(rows * cols * sizeof(float));
-    float **m = (float **)malloc(rows * sizeof(float *));
-    for (int i = 0; i < rows; i++)
-      m[i] = &mData[i * cols];
+    float *mData = (float *)malloc(h * w * sizeof(float));
+    float **m = (float **)malloc(h * sizeof(float *));
+    for (int i = 0; i < h; i++)
+      m[i] = &mData[i * w];
     ...
     free (m);
     free (mData);

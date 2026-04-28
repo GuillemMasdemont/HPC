@@ -1,5 +1,5 @@
 // nvcc -Xcompiler -fopenmp -o mm1 mm1.cu
-// srun --reservation=fri --partition=gpu --gpus=1 ./mm1 2048
+// srun --reservation=fri --partition=gpu --gpus=1 ./mm1 2048 <compare> <printout>
 // block multiplication algorithm -- warp assignment matches row-major matrix format 
 
 #include <stdio.h>
@@ -11,7 +11,7 @@
 #include "helper_cuda.h"
 
 
-#define BLOCK_SIZE	16
+#define BLOCK_SIZE	32
 
 
 // gpu kernel
@@ -90,9 +90,6 @@ int main(int argc, char *argv[]) {
 	for(int i=0; i<hB; i++) 
 		for(int j=0; j<wB; j++)
 			h_B[i*wB+j] = rand()/(float)RAND_MAX;
-	for(int i=0; i<hA; i++) 
-		for(int j=0; j<wB; j++)
-			h_C_cpu[i*wB+j] = 0.0;
 
 	double d_dt = omp_get_wtime();
 
@@ -137,15 +134,18 @@ int main(int argc, char *argv[]) {
 	double h_dt = omp_get_wtime();
     if (argc > 2)
         for(int i=0; i<hA; i++)
-            for(int j=0; j<wB; j++)
+            for(int j=0; j<wB; j++) {
+                h_C_cpu[i*wB+j] = 0.0;
                 for(int k=0; k<wA; k++)
                     h_C_cpu[i*wB+j] += h_A[i*wA+k] * h_B[k*wB+j];
+            }
+            
 	h_dt = omp_get_wtime() - h_dt;
 
 	printf("host: %lfs, device: %lfs (%lfs), speedup: %lf\n", h_dt, d_dt, d_dt_kernel, h_dt/d_dt);
 
 	// check for correctness
-	if(argc > 2)
+	if(argc > 3)
 		for(int i=0; i<hA; i++)
 			for(int j=0; j<wB; j++)
 				printf("C[%d,%d] = %f : %f\n", i, j, h_C_cpu[i*wB+j], h_C_gpu[i*wB+j]);

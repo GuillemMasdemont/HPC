@@ -24,6 +24,7 @@ __global__ void dotprod(float *a, float *b, float *p, int n) {
     __syncthreads();
 
 	int floorPow2 = (int)exp2((float)(int)log2((float)blockDim.x));
+    
 	if (blockDim.x != floorPow2) {
 		if (threadIdx.x >= floorPow2)
 			part[threadIdx.x - floorPow2] += part[threadIdx.x];

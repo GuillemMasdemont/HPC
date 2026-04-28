@@ -193,6 +193,7 @@
 
 - also prefix scan
 - produces all partial reductions of an input sequence
+- associativity must hold as with reduction
 
   <img src="figures/scan-ser-inc.png" alt="Serial inclusive scan" width="45%" />
 
@@ -212,7 +213,7 @@
   - loop-carried dependence
   - similar to reduce
   - two solutions
-    - Count on associativity of the combiner function ($\oplus$)
+    - count on associativity of the combiner function ($\oplus$)
 - combining scan
   - map
     - tiled scan: map can be applied before the first stage and/or after the last stage
@@ -258,10 +259,7 @@
 - ```blockSum``` in GPU global memory holds the value of last element in each tile
 - ```blockSum``` is a result of the ```scan``` kernel and is used by the ```add```kernel to compute offsets
 - local memory
-  - double length array presents input and output buffer
-  - as there is no pointers in CUDA C, we use two displacements ```dIn``` and ```dOut``` to determine beginning of the input and output part of the buffer
-
-  <img src="figures/scan-double-buffering-gpu.png" alt="Double buffering in local memory with CUDA C" width="30%" />
+  - double length array presents input and output buffer (tile)
 
 - solutions for inclusive scan
   - [scan0.cu](files/3-scan/scan0.cu): serial scan inside blocks (tiles) using local memory, serial computation of offsets

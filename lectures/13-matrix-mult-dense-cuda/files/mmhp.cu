@@ -1,18 +1,19 @@
-// nvcc -arch=sm_70 -o mmh mmhp.cu
-// srun --reservation=fri --partition=gpu --gpus=1 ./mmhp 2048
+// nvcc -Xcompiler -fopenmp -arch=sm_70 -o mmh mmhp.cu
+// srun --reservation=fri --partition=gpu --gpus=1 ./mmhp 2048 <compare> <printout>
 // block multiplication algorithm -- warp assignment matches row-major matrix format
-// half precision 
+// half precision version, CPU version is slow!!, avoid compare flag for large matrices
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include "omp.h"
 #include "cuda.h"
 #include "helper_cuda.h"
 #include "cuda_fp16.h"
 
 
-#define BLOCK_SIZE	16
+#define BLOCK_SIZE	32
 
 
 // gpu kernel
@@ -80,7 +81,9 @@ int main(int argc, char *argv[]) {
 	// memory allocation
 	half *h_A = (half *)malloc(hA*wA*sizeof(half));
     half *h_B = (half *)malloc(hB*wB*sizeof(half));
-    half *h_C = (half *)malloc(hA*wB*sizeof(half));
+    half *h_C_cpu = (half *)malloc(hA*wB*sizeof(half));
+    half *h_C_gpu = (half *)malloc(hA*wB*sizeof(half));
+
 
     // initialization of A and B
 	srand((int)time(NULL));
@@ -89,7 +92,9 @@ int main(int argc, char *argv[]) {
 			h_A[i*wA+j] = __float2half(rand()/(float)RAND_MAX);
 	for(int i=0; i<hB; i++) 
 		for(int j=0; j<wB; j++)
-			h_B[i*wB+j] = __float2half(rand()/(float)RAND_MAX);
+            h_B[i*wB+j] = __float2half(rand()/(float)RAND_MAX);
+            
+	double d_dt = omp_get_wtime();
 
     // allocate memory @ device and transfer data from host
 	half *d_A, *d_B, *d_C;
@@ -119,30 +124,40 @@ int main(int argc, char *argv[]) {
     d_dt_kernel /= 1000;
 
     // data transfer from device
-    checkCudaErrors(cudaMemcpy(h_C, d_C, hA*wB*sizeof(half), cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(h_C_gpu, d_C, hA*wB*sizeof(half), cudaMemcpyDeviceToHost));
 
 	// release memory @ device
 	checkCudaErrors(cudaFree(d_A));
 	checkCudaErrors(cudaFree(d_B));
 	checkCudaErrors(cudaFree(d_C));
 
-	printf("device kernel: %lfs\n", d_dt_kernel);
- 
-    if (argc > 2) {
-        for (int i = 0; i < hA; i++) {
-            for(int j = 0; j < wB; j++) {
-                float cpu = 0.0;
-                for (int k = 0; k < wA; k++)
-                    cpu += __half2float(h_A[i * wA + k]) * __half2float(h_B[k * wB + j]);
-                printf("(%d, %d):%f - %f\n", i, j, cpu, __half2float(h_C[i * wB + j]));
+	d_dt = omp_get_wtime() - d_dt;
+
+    // results host
+	double h_dt = omp_get_wtime();
+    if (argc > 2)
+        for(int i=0; i<hA; i++)
+            for(int j=0; j<wB; j++) {   
+                h_C_cpu[i*wB+j] = 0.0;
+                for(int k=0; k<wA; k++)
+                    h_C_cpu[i*wB+j] += h_A[i*wA+k] * h_B[k*wB+j];
             }
-        }
-    }
+
+	h_dt = omp_get_wtime() - h_dt;
+
+	printf("host: %lfs, device: %lfs (%lfs), speedup: %lf\n", h_dt, d_dt, d_dt_kernel, h_dt/d_dt);
+
+	// check for correctness
+	if(argc > 3)
+		for(int i=0; i<hA; i++)
+			for(int j=0; j<wB; j++)
+				printf("C[%d,%d] = %f : %f\n", i, j, __half2float(h_C_cpu[i*wB+j]), __half2float(h_C_gpu[i*wB+j]));
 
     // release memory @ host
 	free(h_A);
 	free(h_B);
-	free(h_C);
+	free(h_C_cpu);
+	free(h_C_gpu);
 
     return 0;
 }

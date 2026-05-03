@@ -42,21 +42,23 @@
 \begin{itemize}
     \item \textbf{GPU Naive:} A straightforward embarrassingly parallel CUDA implementation where each thread computes one output cell, with global memory accesses and inefficient \texttt{\%} modulo for toroidal wrapping.
 
-    \item \textbf{GPU V1 (Shared Memory):} Loads a halo-padded tile of the world into \texttt{\_\_shared\_\_} memory before the convolution, replacing repeated global memory reads with fast on-chip accesses.
+    \item \textbf{GPU V1 (Shared Memory):} Loads a halo-padded tile of the world into \texttt{\_\_shared\_\_} memory before the convolution, replacing repeated global memory reads with fast accesses.
 
     \item \textbf{GPU V2 (Constant Memory + No Modulo):} Moves the convolution kernel to \texttt{\_\_constant\_\_} memory for cached hardware broadcasting, and replaces modulo boundary \texttt{\%} wrapping with cheaper \texttt{if/else} bounds checks.
 
     \item \textbf{GPU V3 (FP32):} Switches from \texttt{double} to \texttt{float} throughout, unlocking the GPU's more numerous FP32 cores and effectively doubling usable memory bandwidth.
 \end{itemize}
 
-For the CPU parallelization part and the improved GPU versions we implemented: 
+Regarding the CPU parallelization part and the improved GPU versions we implemented:
 
 \begin{itemize}
   \item \textbf{CPU Sequential + OpenMP (\texttt{evolve\_lenia\_seq\_v2}):} Refactors the original CPU baseline and parallelizes dominant loops with OpenMP. This version is used as the reference $T_{seq}$ for speedup calculations.
+  
+    \item \textbf{GPU V4 (Kernel Fusion + Texture LUT):} Fuses the convolution and evolution steps into a single kernel pass with ping-pong buffers, eliminating the intermediate \texttt{d\_tmp} write-back. The growth function is precomputed into a 1D texture object (\texttt{GROWTH\_LUT\_SIZE = 1024}), replacing per-thread \texttt{expf} calls with a hardware-interpolated lookup.
+
   \item \textbf{GPU V5 (Autotuned FP32, \texttt{evolve\_lenia\_v5}):} Evaluates several CUDA thread-block geometries at startup and automatically selects the fastest configuration for the target GPU, then runs the full FP32 simulation with that tile shape.
   \item \textbf{GPU V6 (Dual-GPU Domain Split, \texttt{evolve\_lenia\_v6}):} Splits the world horizontally across two GPUs and exchanges halo rows every step (peer-to-peer when available, otherwise host-staged), enabling larger throughput than single-device execution.
 
-  \item \textbf{GPU V4 (Kernel Fusion + Texture LUT):} Fuses the convolution and evolution steps into a single kernel pass with ping-pong buffers, eliminating the intermediate \texttt{d\_tmp} write-back. The growth function is precomputed into a 1D texture object (\texttt{GROWTH\_LUT\_SIZE = 1024}), replacing per-thread \texttt{expf} calls with a hardware-interpolated lookup.
 \end{itemize}
 
 
@@ -69,9 +71,9 @@ For the CPU parallelization part and the improved GPU versions we implemented:
     \label{fig:performance_plots}
 \end{figure}
 
-The left plot (log scale) shows the sequential CPU reaching $\sim$5000\,s at $4096^2$, while all GPU variants stay below $\sim$3\,s. The right plot expresses this as speedup over CPU, and we peak up at 7866$\times$ for V4 (this result could be further improved by merging it with the 2 GPUs approach).
+The left plot (log scale) shows the sequential CPU reaching $\sim$213.4\,s at $4096^2$, while all GPU variants stay below $\sim$3\,s. The right plot expresses this as speedup over CPU, and we peak up at 322$\times$ for V4 (this result could be further improved by merging it with the 2 GPUs approach).
 
-We decided to pursue an incremental building approach: the Naive GPU already delivers $\sim$100--500$\times$ through parallelism alone. Shared memory (V1) and constant memory with if/else wrapping (V2) reduce redundant loads and arithmetic overhead incrementally. Then we switched to FP32 (V3) is the single largest jump, roughly doubling bandwidth and unlocking full FP32 throughput. Finally, kernel fusion with ping-pong buffers and a texture-based growth LUT (V4) eliminates the intermediate write-back and costly \texttt{expf} calls to reach peak performance. V5 matches V3 via auto-tuned block shapes, we obtained that the best tiling performance is achieved using a 32$\times$16 sized blocks, though the improvement is barely noticeable. Benchmarks were run over 10 simulations for the GPU variants and 5 for the CPU ones. A table of contents with the mean values and uncertainties is presented in the Appendix. 
+We decided to pursue an incremental building approach: the Naive GPU already delivers $\sim$10--50$\times$ through parallelism alone. Shared memory (V1) and constant memory with if/else wrapping (V2) reduce redundant loads and arithmetic overhead incrementally. Then we switched to FP32 (V3) is the single largest jump, roughly doubling bandwidth and unlocking full FP32 throughput. Finally, kernel fusion with ping-pong buffers and a texture-based growth LUT (V4) eliminates the intermediate write-back and costly \texttt{expf} calls to reach peak performance. V5 matches V3 via auto-tuned block shapes, we obtained that the best tiling performance is achieved using a 32$\times$16 sized blocks, though the improvement is barely noticeable. Benchmarks were run over 10 simulations for the GPU variants and 5 for the CPU ones. A table of contents with the mean values and uncertainties is presented in the Appendix. 
 
 The version V6 (2 GPUs) builds on the Naive baseline rather than V3/V4, and we split the grid horizontally across two devices. Halo-exchange overhead limits scaling, so V6 trails the single-GPU optimised variants and only converges at the largest grid sizes where compute dominates transfer cost. This could be further improved by using the techniques used for the single GPU version. Now, we plot the relative speed performance as a function of the image size and the tile size: 
 

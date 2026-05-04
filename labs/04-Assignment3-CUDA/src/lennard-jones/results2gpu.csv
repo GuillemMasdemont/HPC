@@ -1,0 +1,5 @@
+N,runs,nsteps,density,temperature,seq_v2_time_s,seq_v2_speedup,gpu_v2_time_s,gpu_v2_speedup,gpu_v3_time_s,gpu_v3_speedup,gpu_v4_time_s,gpu_v4_speedup,gpu_v5_time_s,gpu_v5_speedup,gpu_v6_time_s,gpu_v6_speedup,gpu_v7_time_s,gpu_v7_speedup,tune_skin,tune_max_nn,tune_block
+1000,5,5000,0.9500,0.5000,,,,,,,,,,,,,2.061646,1.000000,,,
+2000,5,5000,0.9500,0.5000,,,,,,,,,,,,,3.301247,1.000000,,,
+5000,1,5000,0.9500,0.5000,,,,,,,,,,,,,7.445824,1.000000,,,
+8000,1,5000,0.9500,0.5000,,,,,,,,,,,,,11.611125,1.000000,,,

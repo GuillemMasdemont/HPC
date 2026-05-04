@@ -1,13 +1,10 @@
 #!/bin/bash
 
 #SBATCH --reservation=fri
-#SBATCH --partition=gpu
 #SBATCH --job-name=lennard-jones
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gpus=1
-#SBATCH --nodes=1
-#SBATCH --output=lj_out.log
+#SBATCH --cpus-per-task=16
+#SBATCH --output=lj_out_cpu.log
 
 #LOAD MODULES 
 module load CUDA
@@ -16,4 +13,4 @@ module load CUDA
 make
 
 #RUN
-srun ./lj.out
+srun ./lj.out --two-gpu

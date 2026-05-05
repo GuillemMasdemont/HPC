@@ -11,6 +11,10 @@
 \usepackage{graphicx} % Required for inserting images (put this in your preamble)
 \usepackage{subfig}
 \usepackage{comment}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{colortbl}
+
 
 \makeatletter
 \renewcommand{\maketitle}{
@@ -37,71 +41,125 @@
 \maketitle
 
 \begin{enumerate}
-  \item[\textbf{Implementation}] We parallelize the algorithm and present several versions that are built on top of each other. We compare the speedup performance with the baseline model. We consider the following $4$ improved models:
+  \item[\textbf{Implementation}] We parallelize the algorithm and present several versions that are built on top of each other:
 
-\begin{itemize}
-    \item \textbf{V1 -- CPU baseline:} All computation runs sequentially on the CPU.
-    Forces are computed with an $O(n^2)$ nested loop, counting each pair twice.
+\definecolor{v1color}{HTML}{4C72B0}
+\definecolor{v2color}{HTML}{FF7F0E}
+\definecolor{v3color}{HTML}{2CA02C}
+\definecolor{v4color}{HTML}{D62728}
+\definecolor{v5color}{HTML}{9467BD}
+\definecolor{v6color}{HTML}{8C564B}
+\definecolor{v7color}{HTML}{E377C2}
+\definecolor{v8color}{HTML}{7F7F7F}
 
-    \item \textbf{V2 -- OpenMP CPU:} Same $O(n^2)$ force computation as V1 but
-    parallelised across CPU cores with OpenMP. Each pair is visited once using
-    Newton's third law, with per-thread scratch arrays to avoid race conditions.
+\newcommand{\versionbox}[4]{%
+    \begin{tikzpicture}
+        \node[
+            draw=#1, line width=1.4pt,
+            rounded corners=5pt,
+            fill=#1!10,
+            minimum width=3.9cm,
+            minimum height=3.0cm,
+            text width=3.6cm,
+            align=left,
+            inner sep=7pt
+        ] {
+            \textcolor{#1}{\textbf{\footnotesize #2}}\\[3pt]
+            {\scriptsize #3}\\[4pt]
+            \textcolor{#1}{\scriptsize\textbf{#4}}
+        };
+    \end{tikzpicture}%
+}
 
-    \item \textbf{V3 -- GPU 2D grid:} Force computation is offloaded to the GPU
-    using a 2D thread grid where each thread handles one $(i,j)$ pair. Integration
-    stays on the CPU, and GPU memory is allocated and freed every step.
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{cccc}
 
-    \item \textbf{V4 -- GPU 1D pairs:} Force computation uses a 1D kernel
-    with one thread per unique pair and applies Newton's third law to halve the work.
-    Integration still runs on the CPU with per-step memory transfers.
+\versionbox{v1color}%
+    {V1 — CPU baseline}%
+    {\textbullet\ $O(n^2)$ nested loop\\
+     \textbullet\ Each pair counted twice\\
+     \textbullet\ Single CPU core}%
+    {Baseline: $\approx 0.08\times$ vs V2} &
 
-    \item \textbf{V5 -- Fully GPU, AoS:} All steps — forces, integration, and
-    energy computation — run on the GPU. Memory is allocated once and data never
-    leaves the device during the simulation loop.
+\versionbox{v2color}%
+    {V2 — OpenMP CPU}%
+    {\textbullet\ $O(n^2)$, unique pairs only\\
+     \textbullet\ Newton's 3rd law\\
+     \textbullet\ Multi-core via OpenMP}%
+    {Reference: $1\times$} &
 
-    \item \textbf{V6 -- Fully GPU, SoA:} Identical to V5 but uses a
-    Structure-of-Arrays memory layout, enabling contiguous memory access patterns
-    across threads and reducing the number of force evaluations via $r^2$ comparisons.
+\versionbox{v3color}%
+    {V3 — GPU 2D grid}%
+    {\textbullet\ GPU forces, 2D grid\\
+     \textbullet\ One thread per $(i,j)$\\
+     \textbullet\ Per-step malloc/free}%
+    {$\approx 4\times$ vs V2} &
 
-    \item \textbf{V7 -- GPU neighbour list:} Introduces a Verlet neighbour list
-    that limits force computation to nearby particles only, breaking the $O(n^2)$
-    bottleneck. The list is rebuilt only when any particle moves more than half the
-    skin thickness, amortising the rebuild cost over many steps.
+\versionbox{v4color}%
+    {V4 — GPU 1D pairs}%
+    {\textbullet\ 1D kernel, unique pairs\\
+     \textbullet\ Newton's 3rd law on GPU\\
+     \textbullet\ Integration on CPU}%
+    {$\approx 4.5\times$ vs V2} \\[8pt]
 
-    \item \textbf{V8 -- 2-GPU naive:} Particles are split evenly across two GPUs,
-    each computing forces for its own half. Position data is exchanged between devices
-    each step via peer-to-peer transfers where available, otherwise staged through
-    the host.
-\end{itemize}
+\versionbox{v5color}%
+    {V5 — Fully GPU, AoS}%
+    {\textbullet\ All steps on GPU\\
+     \textbullet\ Single malloc/free\\
+     \textbullet\ Data stays on device}%
+    {$\approx 5\times$ vs V2} &
 
+\versionbox{v6color}%
+    {V6 — Fully GPU, SoA}%
+    {\textbullet\ SoA layout\\
+     \textbullet\ Coalesced warp access\\
+     \textbullet\ $r^2$ cutoff check}%
+    {$\approx 5.4\times$ vs V2} &
+
+\versionbox{v7color}%
+    {V7 — Neighbour list}%
+    {\textbullet\ Verlet list, breaks $O(n^2)$\\
+     \textbullet\ Forces on nearby only\\
+     \textbullet\ Rebuild on drift}%
+    {$\approx 7.6\times$ vs V2} &
+
+\versionbox{v8color}%
+    {V8 — 2-GPU naive}%
+    {\textbullet\ Particles split across 2 GPUs\\
+     \textbullet\ P2P position exchange\\
+     \textbullet\ Full GPU integration}%
+    {$\approx 3\times$ vs V2} \\
+
+\end{tabular}
+\caption{Summary of all versions. Speedups at $N=1000$ steps, relative to V2 (OpenMP CPU).}
+\label{tab:version_grid}
+\end{table}
+
+\item[\textbf{Evaluation:}] We first analyze the performance across diferent version for different number of particles (see Figure 1), we plot logaritmic execution time scale. 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{performance_variance_plot.png}
+    \includegraphics[width=1.05\textwidth]{performance_variance_plot.png}
     \caption{Performance comparison of the aforementioned CPU and CUDA optimization layers.}
     \label{fig:performance_plots}
 \end{figure}
 
-The results show consistent speedups as optimisations are added across all particle
-counts. V3 is roughly $2\times$ faster than V2, primarily due to halving the number
-of force evaluations. The largest gain comes from eliminating CPU-GPU transfers in V4,
-which is $3$--$4\times$ faster than V3 at small $N$ and around $2\times$ at $N=8000$.
-V5 adds a further $1.03$--$1.32\times$ improvement over V4, with the gain growing
-with $N$ as coalesced memory access becomes more beneficial at larger problem sizes.
-Overall, V5 achieves a $3.6$--$8.1\times$ speedup over V2 depending on particle count.
-To make results meaningful, we also study the standard deviation. We observed a high standard deviation in V2, which is likely due to variable overhead from
-repeated memory allocation and deallocation each step.
+As shown in class, we see that the Naive CPU and OpenMP CPU baselines (blue-orange) scale as $O(n^2)$, going from N=1000 to N=8000 increases OpenMP CPU time by roughly $128 \times$ (from $~2.5s$ to $~250s$), consistent with squaring the particle count. The GPU versions all show much shallower scaling. $gpu\_v2$ and $gpu\_v3$ (green and red) improve over CPU but still carry significant per-step transfer overhead since they allocate and free GPU memory every step, at N=8000 they reach $~8s$ (about $30\times$ faster than CPU). $gpu\_v4$ and $gpu\_v5$ (purple and brown) eliminate this overhead by keeping data resident on the GPU, bringing $N=8000$ down to $~2-3s$ and achieving roughly $80-100\times$ speedup over CPU. The neighbour list version $gpu\_v6$ (pink) is the clear winner at all particle counts, at $N=8000$ it reaches $~0.8s$, nearly $300\times$ faster than CPU, because it breaks the $O(n^2)$ wall by limiting each particle to $~40$ neighbours rather than $8000$. The 2-GPU version $gpu\_v7$ (grey) is slower than $gpu\_v6$ at all $N$, because the position exchange between devices at each step introduces synchronisation overhead that outweighs the benefit of splitting the work, at $N=1000$ and $N=2000$ the problem is simply too small to amortise that cost, and at $N=8000$ the exchange still costs more than the neighbour list saves, although more close. We believe that combining the 2 GPU version with the V7 - Neighbour list, will not improve the result due to the memory transfer overhead. One possible way could be to try CUDA constant memory for simulation parameters such as $\epsilon$, $\sigma$, and $r_\text{cut}$, which are read by every thread every step but never modified.
 
+Now we present the performance of V5 - Fully GPU, AoS version for different block sizes: 
 
-
-\begin{figure}
+\begin{figure}[h!]
     \centering
     \includegraphics[width=0.8\textwidth]{block_size_tuning_N4000.png}
     \caption{Block size tuning results for the V5 force kernel (N = 4000).}
     \label{fig:block_size_tuning} 
 \end{figure}
 
-With respect to the block size, we observe the best configuration across different number of particles is always $256$ threads per block.
+The sweep shows a clear performance cliff at small block sizes — block=32 takes 0.3416 ms/step, roughly 3× slower than the optimum. This is because 32 threads is exactly one warp, giving the scheduler no room to hide memory latency: when a thread stalls waiting for a global memory read, the entire block stalls with nothing to switch to. Doubling to block=64 already halves the time to 0.1788 ms/step, and block=128 drops further to 0.1149 ms/step as latency hiding improves with more warps in flight per block. Beyond 128 the curve flattens — 256, 512, and 128 all measure within 0.0002 ms/step of each other (0.1147–0.1149), meaning the GPU is fully saturated and additional warps per block provide no further benefit. Block=1024 slightly regresses to 0.1163 ms/step, likely due to increased register pressure reducing the number of blocks that can reside simultaneously on each streaming multiprocessor. In practice, blocksizes of 128 to 512 are optimal. In this scenario, we only measured the performance on computing the force, but since force kernel dominates runtime, the chosen block size is effectively optimal for the full leapfrog step.
+
 \end{enumerate}
 
 \end{document}

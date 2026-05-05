@@ -217,6 +217,11 @@ INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 INPUT /usr/local/texlive/2025/texmf-dist/tex/latex/mathdesign/mdbch/ts1mdbch.fd
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/mdbchr8c.tfm
+INPUT ./performance_variance_plot.png
+INPUT ./performance_variance_plot.png
+INPUT ./performance_variance_plot.png
+INPUT ./performance_variance_plot.png
+INPUT ./performance_variance_plot.png
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchb8t.vf
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8y.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8t.tfm

@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1777822814.27492 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" "report.pdf" "report" 1777822815.34369 0
-  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" 1777822814.00417 3030 7b1a648ebec33d5b6a86c8fa8ad57f99 ""
+["pdflatex"] 1777930462.81314 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" "report.pdf" "report" 1777930463.95786 0
+  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" 1777930461.38828 4161 29c3eb03122214d1d12357684790a79b ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc" 1276641224 6938 5135be6a8802f13a7faf296d1959a1ab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/jknappen/ec/ecrm1095.tfm" 1136768653 3584 929cdff2b7a8c11bd4d49fd68cb0ae70 ""
@@ -114,9 +114,10 @@
   "/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1764491816 5467155 19efa205003f9ecad95fbbaa6ff24da1 ""
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1764491721 3345742 9759ea87a28497a5108231f989ca3eaf ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
-  "report.aux" 1777822815.22372 162 55205a9e8a8eca30d36afb389b0617bf "pdflatex"
-  "report.out" 1777822814.90413 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
-  "report.tex" 1777822814.00417 3030 7b1a648ebec33d5b6a86c8fa8ad57f99 ""
+  "performance_variance_plot.png" 1777930197.26387 58030 fc2144f050af1d4d6e7715011a3ebf53 ""
+  "report.aux" 1777930463.84408 563 0511a57d25554e14043392f861c29127 "pdflatex"
+  "report.out" 1777930463.44316 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "report.tex" 1777930461.38828 4161 29c3eb03122214d1d12357684790a79b ""
   (generated)
   "report.aux"
   "report.log"

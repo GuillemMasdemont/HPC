@@ -222,6 +222,11 @@ INPUT ./performance_variance_plot.png
 INPUT ./performance_variance_plot.png
 INPUT ./performance_variance_plot.png
 INPUT ./performance_variance_plot.png
+INPUT ./block_size_tuning_N4000.png
+INPUT ./block_size_tuning_N4000.png
+INPUT ./block_size_tuning_N4000.png
+INPUT ./block_size_tuning_N4000.png
+INPUT ./block_size_tuning_N4000.png
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchb8t.vf
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8y.tfm
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/tfm/public/mathdesign/mdbch/md-chb8t.tfm
@@ -259,3 +264,4 @@ INPUT /usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchri8a.pfb
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb
 INPUT /usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb
+INPUT /usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr8t.pfb

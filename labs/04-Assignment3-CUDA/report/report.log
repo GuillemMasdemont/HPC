@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.11.30)  4 MAY 2026 23:34
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.11.30)  5 MAY 2026 13:10
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -662,18 +662,23 @@ LaTeX Font Info:    Font shape `TS1/mdbch/m/n' will be
 File: performance_variance_plot.png Graphic file (type png)
 <use performance_variance_plot.png>
 Package pdftex.def Info: performance_variance_plot.png  used on input line 80.
-(pdftex.def)             Requested size: 407.66833pt x 274.12611pt.
+(pdftex.def)             Requested size: 362.37569pt x 243.66994pt.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
+<block_size_tuning_N4000.png, id=6, 570.933pt x 354.123pt>
+File: block_size_tuning_N4000.png Graphic file (type png)
+<use block_size_tuning_N4000.png>
+Package pdftex.def Info: block_size_tuning_N4000.png  used on input line 99.
+(pdftex.def)             Requested size: 362.37569pt x 224.77373pt.
 
 
 [1
 
 {/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc}]
 
-[2 <./performance_variance_plot.png>] (./report.aux)
+[2 <./performance_variance_plot.png> <./block_size_tuning_N4000.png>] (./report.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
@@ -682,18 +687,18 @@ Package rerunfilecheck Info: File `report.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 13641 strings out of 473190
- 214193 string characters out of 5715799
- 606872 words of memory out of 5000000
- 36691 multiletter control sequences out of 15000+600000
+ 13650 strings out of 473190
+ 214469 string characters out of 5715799
+ 607962 words of memory out of 5000000
+ 36699 multiletter control sequences out of 15000+600000
  589361 words of font info for 84 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 85i,6n,133p,425b,494s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchri8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb>
-Output written on report.pdf (2 pages, 99281 bytes).
+ 85i,6n,133p,425b,496s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/bitstrea/charter/bchri8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr8t.pfb>
+Output written on report.pdf (2 pages, 184472 bytes).
 PDF statistics:
- 47 PDF objects out of 1000 (max. 8388607)
- 30 compressed objects within 1 object stream
- 4 named destinations out of 1000 (max. 500000)
- 6 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 55 PDF objects out of 1000 (max. 8388607)
+ 34 compressed objects within 1 object stream
+ 5 named destinations out of 1000 (max. 500000)
+ 11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -12,8 +12,7 @@
 
 #define buffsize 1000000
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
 	int				taskid, ntasks;
 	int				i;
 	int				*sendbuff, *recvbuff;
@@ -26,8 +25,7 @@ int main(int argc, char* argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &taskid);
 	MPI_Comm_size(MPI_COMM_WORLD, &ntasks);
 
-	if(ntasks != 2)
-	{
+	if(ntasks != 2){
 		printf("Start exactly two processes!!!\n");
 		MPI_Finalize();
 		exit(1);
@@ -49,8 +47,7 @@ int main(int argc, char* argv[])
 
 	doneSend = 0;
 	doneRecv = 0;
-	while(!doneSend && !doneRecv)
-	{
+	while(!(doneSend && doneRecv)) {
 		printf("%d", taskid);
 		MPI_Test(&sendrequest, &doneSend, MPI_STATUS_IGNORE);
 		MPI_Test(&recvrequest, &doneRecv, MPI_STATUS_IGNORE);

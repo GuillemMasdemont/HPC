@@ -1,0 +1,24 @@
+
+======================   ALLOCATED NODES   ======================
+	wn102: flags=0x11 slots=4 max_slots=0 slots_inuse=0 state=UP
+=================================================================
+Vehicle 0:
+	mass: 1000
+	position: 100
+	velocity: 10
+	acceleration: 1
+Vehicle 1:
+	mass: 2000
+	position: 200
+	velocity: 20
+	acceleration: 2
+Vehicle 2:
+	mass: 3000
+	position: 300
+	velocity: 30
+	acceleration: 3
+Vehicle 3:
+	mass: 4000
+	position: 400
+	velocity: 40
+	acceleration: 4

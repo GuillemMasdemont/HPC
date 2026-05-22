@@ -10,7 +10,7 @@
   - lectures:
     [Introduction](lectures/01-introduction/introduction.md),
     [Architectures](lectures/02-architectures/architectures.md)
-  - labs: 
+  - labs:
     cancelled
 
 - Week 02:
@@ -65,11 +65,31 @@
   - lectures:
     Invited lecture from Prof. Amr El Abbadi, University of California, Santa Barbara. Distributed Systems and Databases of the Globe Unite!
   - labs:
-    [Assignment 3 - Molecular dynamics](labs/04-Assignment3-CUDA/Assignment3.md)
+    [Assignment 3 - Molecular Dynamics](labs/04-Assignment3-CUDA/Assignment3.md)
 
 - Week 10:
   - lectures:
-    [Distributed-memory systems](lectures/15-distributed-memory-systems/distributed-memory.systems.md),
+    [Distributed-memory Systems](lectures/15-distributed-memory-systems/distributed-memory.systems.md),
     [MPI](lectures/16-mpi/mpi.md)
   - labs:
-  
+    Consultations (Zoom)
+
+- Week 11:
+  - lectures:
+    [MPI Collectives](lectures/17-mpi-collectives/mpi-collectives.md),
+    [Data Reorganization Patterns](lectures/18-data-reorg-patterns/data-reorg-patterns.md),
+    [MPI Data Types](lectures/19-mpi-datatypes/mpi-datatypes.md)
+  - labs:
+    Assignment 3 report defense
+
+- Week 12:
+  - lectures:
+    [NCCL](lectures/20-nccl/nccl.md),
+    [Patterns: Fork-join](lectures/21-patterns-fork-join/patterns-fork-join.md)
+  - labs:
+    [Assignment 4 - Lenia with MPI](labs/05-Assignment4-MPI/Assignment4.md)
+
+- Week 13:
+  - lectures:
+    [Performance Measures](lectures/22-performance/performance.md)
+  - labs: Consultations regarding Assignment 4

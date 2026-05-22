@@ -17,7 +17,7 @@
 - modern systems are heterogeneous
   - many nodes connected
   - shared memory within a node
-  - offload systems on some nodes
+  - accelerators on some nodes
   - message passing between nodes
   - programming of modern systems reflects architectural design
 
@@ -73,9 +73,9 @@
 - simple model
   - latency $\lambda$ (seconds) needed to establish a connection
   - bandwidth $\beta$ (bits per second)
-  - time needed to transfer a message od length $n$ (bytes, byte equals eight bits):
+  - time needed to transfer a message of length $n$ (bytes, byte equals eight bits):
 
-    $t(n) = \lambda + \frac{1}{\beta} n$
+    $t(n) = \lambda + \beta^{-1} n$
 
     <img src="figures/time-to-transfer-message.png" alt="Time to transfer a message" width="30%">
 

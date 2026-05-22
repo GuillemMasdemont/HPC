@@ -9,14 +9,12 @@
 
 // custom datatype to support MPI_MAXLOC reduction
 
-typedef struct 
-{ 
+typedef struct { 
 	double	value;
 	int		id; 
 } valueandid; 
 
-int main(int argc, char* argv[]) 
-{  
+int main(int argc, char* argv[]) {  
     valueandid	in, out; 
     int			myid, procs; 
  

@@ -10,28 +10,26 @@
 #define N 20
 #define MAXITERS 200
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char *argv[]) {
 	int i, j, neighs;
 	int iters = 0;
 
-	char * boardptr = NULL;					// ptr to board
-	char ** board;							// board, 2D matrix, contignous memory allocation!
+	char *boardptr = NULL;					// ptr to board
+	char **board;							// board, 2D matrix, contiguous memory allocation!
 
 	int procs, myid;			
 	int mystart, myend, myrows;
-	char ** myboard;						// part of board that belongs to a process
-	char ** myboard_new;					// myboard_new is of the same size as myboard, needed for correct computation of iteration steps
-	char * myrow_top, * myrow_bot;			// data (row) from top neighbour, data (row) from bottom neighbour
+	char **myboard;							// part of board that belongs to a process
+	char **myboard_new;						// myboard_new is of the same size as myboard, needed for correct computation of iteration steps
+	char *myrow_top, *myrow_bot;			// data (row) from top neighbour, data (row) from bottom neighbour
 
-	MPI_Init(&argc, &argv);					// initiailzation
+	MPI_Init(&argc, &argv);					// initialization
 	
 	MPI_Comm_rank(MPI_COMM_WORLD, &myid);	// process ID
 	MPI_Comm_size(MPI_COMM_WORLD, &procs);	// number of processes
 
 	// initialize global board
-	if (myid == 0)
-	{
+	if (myid == 0) {
 		srand(1573949136);
 		board = board_initialize(N, N);
 		boardptr = board[0];
@@ -45,8 +43,8 @@ int main(int argc, char* argv[])
 	// initialize my structures
 	myboard = board_initialize(myrows, N);
 	myboard_new = board_initialize(myrows, N);
-	myrow_top = (char*)malloc(N * sizeof(char));
-	myrow_bot = (char*)malloc(N * sizeof(char));
+	myrow_top = (char *)malloc(N * sizeof(char));
+	myrow_bot = (char *)malloc(N * sizeof(char));
 
 	// scatter initial matrix
 	MPI_Scatter(boardptr, myrows * N, MPI_CHAR, 
@@ -57,22 +55,20 @@ int main(int argc, char* argv[])
 	// sender, communicator
 
 	// do the calculation
-	while (iters < MAXITERS)
-	{
-		// exchange borders with neigbouring processes
+	while (iters < MAXITERS) {
+		// exchange borders with neighboring processes
 		MPI_Sendrecv(myboard[0], N, MPI_CHAR, (myid + procs - 1) % procs, 0,
 					 myrow_bot, N, MPI_CHAR, (myid + 1) % procs, 0,
 					 MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
 		// ptr to send data, send data size, send data type, receiver, message tag,
-		// ptr to received data, received data size, recevied data type, sender, message tag,
+		// ptr to received data, received data size, received data type, sender, message tag,
 		// communicator, status
 		MPI_Sendrecv(myboard[myrows - 1], N, MPI_CHAR, (myid + 1) % procs, 1,
 					 myrow_top, N, MPI_CHAR, (myid + procs - 1) % procs, 1, 
 					 MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
 		// do the computation of my part
 		for (i = 0; i < myrows; i++)
-			for (j = 0; j < N; j++)
-			{
+			for (j = 0; j < N; j++) {
 				neighs = count_neighbours_mpi(myboard, myrow_top, myrow_bot, myrows, N, i, j);
 				if (neighs == 3 || (myboard[i][j] == 1 && neighs == 2))
 					myboard_new[i][j] = 1;

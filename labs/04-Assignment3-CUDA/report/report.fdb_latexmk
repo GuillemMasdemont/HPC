@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1778000951.12556 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" "report.pdf" "report" 1778000952.749 0
-  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" 1778000950.82559 7463 4c949e84f629942e91538990ce6171dd ""
+["pdflatex"] 1778012019.58292 "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" "report.pdf" "report" 1778012021.24199 0
+  "/Users/guillemmasdemont/Documents/Master/Ljubljana courses/HPC/labs/04-Assignment3-CUDA/report/report.tex" 1778012019.02041 7291 bdcdebe5f01816dce63e24c8ddd50177 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/ly1/texnansi.enc" 1276641224 6938 5135be6a8802f13a7faf296d1959a1ab ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/jknappen/ec/ecrm1095.tfm" 1136768653 3584 929cdff2b7a8c11bd4d49fd68cb0ae70 ""
@@ -30,7 +30,6 @@
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7t.pfb" 1377991452 7182 30fbf4d976bdd2f8e5e608bba0e9a74d ""
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr7y.pfb" 1377991452 26162 bd4b2cdc5229167b72fc13a07768bc17 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chr8t.pfb" 1377991452 9243 502d35497cb43eb13fdc05aa0b9f0ab4 ""
-  "/usr/local/texlive/2025/texmf-dist/fonts/type1/public/mathdesign/mdbch/md-chri7m.pfb" 1377991452 14327 a0ec94d7b5c34b2f2717eb600de09ee9 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchb8t.vf" 1377991452 2224 1b7f397f83969596ba27f849a2540080 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7t.vf" 1377991452 976 862fa3ae193f69aabcce6a8c0b3499c2 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/vf/public/mathdesign/mdbch/mdbchr7y.vf" 1377991452 836 7c23d0fba34243bfaba30e51eed87f22 ""
@@ -186,9 +185,9 @@
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
   "block_size_tuning_N4000.png" 1777999835.41223 81320 e8fbd98764b4d91eac52f96a394143f9 ""
   "performance_variance_plot.png" 1777999776.44704 57105 53b17225d9dce8126310cf65ea95f692 ""
-  "report.aux" 1778000952.5966 1201 f0c304cad082100b7249bd7fb33098f9 "pdflatex"
-  "report.out" 1778000951.94497 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
-  "report.tex" 1778000950.82559 7463 4c949e84f629942e91538990ce6171dd ""
+  "report.aux" 1778012021.08326 1201 f0c304cad082100b7249bd7fb33098f9 "pdflatex"
+  "report.out" 1778012020.45076 0 d41d8cd98f00b204e9800998ecf8427e "pdflatex"
+  "report.tex" 1778012019.02041 7291 bdcdebe5f01816dce63e24c8ddd50177 ""
   (generated)
   "report.aux"
   "report.log"

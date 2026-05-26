@@ -1,0 +1,18 @@
+
+======================   ALLOCATED NODES   ======================
+	wn102: flags=0x11 slots=4 max_slots=0 slots_inuse=0 state=UP
+=================================================================
+datatype_base: lower bound: 0 upper bound: 17 size: 5
+datatype_zip:  lower bound: 0 upper bound: 1 size: 5
+
+Proc 1: BBBBB
+Proc 2: CCCCC
+Proc 3: DDDDD
+Proc 0: AAAAA
+Result: ABCDABCDABCDABCDABCD
+
+Data:   01230123012301230123
+Proc 3: 33333
+Proc 1: 11111
+Proc 2: 22222
+Proc 0: 00000

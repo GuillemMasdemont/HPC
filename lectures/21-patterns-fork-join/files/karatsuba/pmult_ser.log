@@ -1,0 +1,4 @@
+/var/spool/slurm/job15152726/slurm_script: line 17: ./pmult_ser: No such file or directory
+
+Unequal = 0
+time: simple: 65.461641, Karatsuba: 2.531401

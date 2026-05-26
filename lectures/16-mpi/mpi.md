@@ -14,14 +14,15 @@
   - MPI-1.2 (mostly sufficient)
   - MPI-2.1 (I/O, dynamic process management)
   - MPI-3 (enhanced collectives, multithreaded programming, performance tools)
+  - MPI-4 (persistent send/receive)
+  - MPI-5 (interoperability layer for compatibility between different implementations)
   - implementations
     - MPICH
     - OpenMPI
 
 ## MPI Advantages
 
-- recognized and standardized library
-  - some implementations are free
+- recognized and standardized library, some implementations are free
 - well understood
 - tuned for all sorts of hardware
 - used in many applications
@@ -56,8 +57,8 @@
     - may have one or multiple threads
 
 - communicator
-  - processes are collected into groups
-  - each message is sent in a context and must be received in the same context
+  - processes are collected into groups (a set of processes)
+  - each message is sent in a context and must be received in the same context (same channel ID)
   - a group and a context form a communicator
     - default communicator ```MPI_COMM_WORLD``` contains all processes
     - a process inside a communicator is identified by its rank
@@ -84,7 +85,7 @@
   - cluster middleware (SLURM) and network file system
   - processes must have permission to run over a network
 - on Arnes cluster use module ```OpenMPI```
-- executable ```mpirun``` (```mpiexec````) starts the requested number of processes
+- executable ```mpirun``` (```mpiexec```) starts the requested number of processes
 - a common approach is to use one executable on all nodes, differentiation is made inside the code
 
 - in C/C++ we must include library ```mpi.h```
@@ -144,7 +145,7 @@
   
   <img src="figures/p2p-buffer.png" alt="MPI point-to-point communication using buffer" width="50%">
 
-- synchronous (buffer-less)
+- synchronous (buffer-less) mode
   - it is better to avoid copying to buffer
   - sending process and receiving process must synchronously exchange data - sending process is blocked until receiving process is not ready
   - synchronous sending can be explicitly specified with ```MPI_Ssend```
@@ -178,7 +179,7 @@
 
 - example: [hello.c](files/hello/hello.c), [hello.sh](files/hello/hello.sh)
   - compiling on the Arnes cluster
-    - ```module load OpenMPI````
+    - ```module load OpenMPI```
     - ```mpicc -o hello hello.c```
   - running
     - ```sbatch hello.sh```
@@ -213,6 +214,7 @@
   - [p2p3.c](files/p2p/p2p3.c): immediate communication with ```MPI_Wait```
   - [p2p4.c](files/p2p/p2p4.c): immediate communication with ```MPI_Test```
 
+<!--
 ### Example: The Conway's Game of Life
 
 - MPI implementation of the Conway's gamne of life
@@ -222,3 +224,5 @@
   - [conway.c](files/conway/conway.c)
   - [board.h](files/conway/board.h)
   - [conway.sh](files/conway/conway.sh)
+
+-->

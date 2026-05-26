@@ -1,0 +1,9 @@
+
+Unequal = 0
+time: simple: 13.267460, Karatsuba: 0.937049
+
+Unequal = 0
+time: simple: 13.173102, Karatsuba: 0.611923
+
+Unequal = 0
+time: simple: 13.262627, Karatsuba: 0.719906

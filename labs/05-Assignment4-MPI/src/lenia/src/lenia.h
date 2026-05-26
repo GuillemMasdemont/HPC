@@ -24,4 +24,13 @@ double *evolve_lenia_mpi(const unsigned int rows, const unsigned int cols,
                          const unsigned int num_orbiums,
                          int generate_gif);
 
+/* NCCL+CUDA parallel implementation (lenia_nccl.cu) */
+double *evolve_lenia_nccl(const unsigned int rows, const unsigned int cols,
+                          const unsigned int steps, const double dt,
+                          const unsigned int kernel_size,
+                          const struct orbium_coo *orbiums,
+                          const unsigned int num_orbiums,
+                          int generate_gif);
+
+
 #endif

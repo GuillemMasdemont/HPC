@@ -1,0 +1,58 @@
+# Compiler
+NVCC = nvcc
+MPICC = mpicc
+
+# GPU architecture — adjust for your cluster:
+#   sm_70 → V100 (Volta)
+#   sm_80 → A100 (Ampere)
+#   sm_90 → H100 (Hopper)
+GPU_ARCH = sm_70
+
+# Compiler flags — gencode produces fat binary for V100(sm_70) and A100(sm_80)
+NVCC_FLAGS  = -O3 \
+              -gencode arch=compute_70,code=sm_70 \
+              -gencode arch=compute_80,code=sm_80 \
+              -Xcompiler -Wall
+LDLIBS      = -lnccl -lmpi -lm
+LDFLAGS     =
+
+# Retrieve MPI include/lib paths from mpicc so nvcc can find mpi.h
+MPI_CFLAGS  = $(shell mpicc --showme:compile)
+# Strip rpath/dtags flags (nvcc rejects -Wl,-rpath,...); modules set LD_LIBRARY_PATH at runtime.
+# Convert remaining -Wl,X flags to -Xlinker X that nvcc accepts.
+MPI_LDFLAGS = $(shell mpicc --showme:link \
+                | sed 's/-Wl,-rpath[, ][^ ]*//g; s/-Wl,--enable-new-dtags//g' \
+                | sed 's/-Wl,\([^ ]*\)/-Xlinker \1/g')
+
+SRC = src
+
+# Source files — .cu files compiled with nvcc, .c files with nvcc -x c
+CUDA_SRCS = $(wildcard $(SRC)/*.cu)
+C_SRCS    = $(wildcard $(SRC)/*.c)
+
+# Header files
+HDRS = $(wildcard $(SRC)/*.h)
+
+# Object files
+CUDA_OBJS = $(CUDA_SRCS:$(SRC)/%.cu=%.o)
+C_OBJS    = $(C_SRCS:$(SRC)/%.c=%.o)
+OBJS      = $(CUDA_OBJS) $(C_OBJS)
+
+# Executable name
+TARGET = lenia_nccl.out
+
+# ---- Link --------------------------------------------------------------------
+$(TARGET): $(OBJS)
+	$(NVCC) $(NVCC_FLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS) $(LDLIBS) $(MPI_LDFLAGS)
+
+# ---- Compile CUDA sources ----------------------------------------------------
+%.o: $(SRC)/%.cu $(HDRS)
+	$(NVCC) $(NVCC_FLAGS) $(MPI_CFLAGS) -c -o $@ $<
+
+# ---- Compile C sources (via nvcc so the linker stays consistent) -------------
+%.o: $(SRC)/%.c $(HDRS)
+	$(NVCC) $(NVCC_FLAGS) -x c $(MPI_CFLAGS) -c -o $@ $<
+
+# ---- Clean -------------------------------------------------------------------
+clean:
+	rm -f $(OBJS) $(TARGET)

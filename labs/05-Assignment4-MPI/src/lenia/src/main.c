@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lenia.h"
+#include <cuda_runtime.h>
 
 #define DEFAULT_N     128
 #define DEFAULT_STEPS 100
@@ -62,6 +63,7 @@ int main(int argc, char *argv[])
         MPI_Barrier(MPI_COMM_WORLD);
         double t0 = MPI_Wtime();
 
+        // double *world = evolve_lenia_nccl(
         double *world = evolve_lenia_mpi(
             (unsigned int)N, (unsigned int)N,
             (unsigned int)num_steps, DT,

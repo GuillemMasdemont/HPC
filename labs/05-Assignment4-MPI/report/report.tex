@@ -1,0 +1,142 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[charter]{mathdesign} % Elegant, readable font
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{graphicx} % Required for inserting images (put this in your preamble)
+\usepackage{subfig}
+\usepackage{comment}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{colortbl}
+
+\makeatletter
+\renewcommand{\maketitle}{
+  \begin{flushleft}
+    {\huge \textbf{\@title} \par}
+    \vspace{0.5cm}
+    {\large \@author \par}
+    \vspace{0.2cm}
+    {\@date \par}
+    \vspace{0.2cm}
+    \hrule
+  \end{flushleft}
+}
+\makeatother
+
+% FIXED: Removed the stray \\[-0.2em]} from this line
+\title{\LARGE\textbf{Assignment 5: Lenia -- An artificial life}} 
+\author{
+    Plabon Shaha and Guillem Masdemont \\ 
+    \small University of Ljubljana, Spring Semester, EMAI Cohort 25--27 
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{enumerate}
+    \item[\textbf{Evaluation}] We use different versions to evaluate performance metrics.
+\end{enumerate} % FIXED: Safely closed the list environment before declaring your colors and table
+
+\definecolor{v1color}{HTML}{4C72B0}
+\definecolor{v2color}{HTML}{FF7F0E}
+\definecolor{v3color}{HTML}{2CA02C}
+\definecolor{v4color}{HTML}{D62728}
+\definecolor{v5color}{HTML}{9467BD}
+\definecolor{v6color}{HTML}{8C564B}
+\definecolor{v7color}{HTML}{E377C2}
+\definecolor{v8color}{HTML}{7F7F7F}
+
+\newcommand{\versionbox}[4]{%
+    \begin{tikzpicture}
+        \node[
+            draw=#1, line width=1.4pt,
+            rounded corners=5pt,
+            fill=#1!10,
+            minimum width=3.9cm,
+            minimum height=3.0cm,
+            text width=3.6cm,
+            align=left,
+            inner sep=7pt
+        ] {
+            \textcolor{#1}{\textbf{\footnotesize #2}}\\[3pt]
+            {\scriptsize #3}\\[4pt]
+            \textcolor{#1}{\scriptsize\textbf{#4}}
+        };
+    \end{tikzpicture}%
+}
+
+\begin{table}[h]
+\centering
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ccc}
+
+\versionbox{v1color}%
+    {Row distribution (1 proc)}%
+    {\textbullet\ $O(n^2)$ nested loop\\
+     \textbullet\ Sequential execution\\
+     \textbullet\ Single-process baseline}%
+    {Baseline: $\approx 0.08\times$ vs V2} &
+
+\versionbox{v1color}%
+    {Row distribution (16 procs)}%
+    {\textbullet\ $O(n^2)$ nested loop\\
+     \textbullet\ Each pair counted twice\\
+     \textbullet\ 16-process scaling}%
+    {Reference: $1\times$} &
+
+\versionbox{v2color}%
+    {Block distribution (16 procs)}%
+    {\textbullet\ $O(n^2)$, unique pairs only\\
+     \textbullet\ Newton's 3rd law\\
+     \textbullet\ Multi-core via OpenMP}%
+    {Reference: $1\times$} \\[8pt]
+
+\versionbox{v3color}%
+    {Block distribution + DT (16 procs)}%
+    {\textbullet\ Row \& box decomposition\\
+     \textbullet\ Localized particle blocks\\
+     \textbullet\ Shared memory caching}%
+    {$\approx 4\times$ vs V2} &
+
+\versionbox{v4color}%
+    {GPU - NCCL (16 procs)}%
+    {\textbullet\ MPI derived data types\\
+     \textbullet\ Non-contiguous packing\\
+     \textbullet\ GPU-aware MPI transfer}%
+    {$\approx 4.5\times$ vs V2} & \\
+
+\end{tabular}
+\caption{Summary of all versions. Speedups at $N=1000$ steps, relative to V2 (OpenMP CPU).}
+\label{tab:version_grid}
+\end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.05\textwidth]{assignment5_performance_chart.png}
+    \caption{Performance comparison of the aforementioned optimization layers.}
+    \label{fig:performance_plots}
+\end{figure}
+
+
+\pagebreak 
+
+
+\item Now, we implement the row-wise distribution. Increasing the width of the border area exchanged between processes and performing additional computations on this border allows us to exchange data only every second, third, etc. iteration. The results are presented in the following image:
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.05\textwidth]{varying_k_performance.png}
+    \caption{Performance comparison of the aforementioned optimization layers.}
+    \label{fig:performance_plots}
+\end{figure}
+
+
+\end{document}

@@ -1,0 +1,98 @@
+rm -f gifenc.o lenia.o main.o orbium.o lenia.out
+mpicc -O3 -Wall  -c -o gifenc.o src/gifenc.c
+mpicc -O3 -Wall  -c -o lenia.o src/lenia.c
+mpicc -O3 -Wall  -c -o main.o src/main.c
+mpicc -O3 -Wall  -c -o orbium.o src/orbium.c
+mpicc -O3 -Wall gifenc.o lenia.o main.o orbium.o -o lenia.out  -lm
+========================================================
+Lenia MPI Benchmark
+Steps: 100  |  Averaged over 3 runs
+========================================================
+
+# Raw output — lines starting with CSV can be extracted for speedup:
+# Format: CSV,grid_size,procs,avg_time_seconds
+
+--- Grid 128x128 ---
+Grid: 128x128 | Steps: 100 | Processes: 1 | Runs: 3
+Average time (3 runs): 4.6999 s
+CSV,128,1,4.6999
+Grid: 128x128 | Steps: 100 | Processes: 2 | Runs: 3
+Average time (3 runs): 2.3621 s
+CSV,128,2,2.3621
+Grid: 128x128 | Steps: 100 | Processes: 4 | Runs: 3
+Average time (3 runs): 1.1873 s
+CSV,128,4,1.1873
+Grid: 128x128 | Steps: 100 | Processes: 16 | Runs: 3
+Average time (3 runs): 0.3417 s
+CSV,128,16,0.3417
+Grid: 128x128 | Steps: 100 | Processes: 32 | Runs: 3
+Average time (3 runs): 0.2903 s
+CSV,128,32,0.2903
+
+--- Grid 512x512 ---
+Grid: 512x512 | Steps: 100 | Processes: 1 | Runs: 3
+Average time (3 runs): 74.9580 s
+CSV,512,1,74.9580
+Grid: 512x512 | Steps: 100 | Processes: 2 | Runs: 3
+Average time (3 runs): 37.5556 s
+CSV,512,2,37.5556
+Grid: 512x512 | Steps: 100 | Processes: 4 | Runs: 3
+Average time (3 runs): 19.2048 s
+CSV,512,4,19.2048
+Grid: 512x512 | Steps: 100 | Processes: 16 | Runs: 3
+Average time (3 runs): 4.9512 s
+CSV,512,16,4.9512
+Grid: 512x512 | Steps: 100 | Processes: 32 | Runs: 3
+Average time (3 runs): 2.5408 s
+CSV,512,32,2.5408
+
+--- Grid 1024x1024 ---
+Grid: 1024x1024 | Steps: 100 | Processes: 1 | Runs: 3
+Average time (3 runs): 300.5142 s
+CSV,1024,1,300.5142
+Grid: 1024x1024 | Steps: 100 | Processes: 2 | Runs: 3
+Average time (3 runs): 150.7373 s
+CSV,1024,2,150.7373
+Grid: 1024x1024 | Steps: 100 | Processes: 4 | Runs: 3
+Average time (3 runs): 77.3422 s
+CSV,1024,4,77.3422
+Grid: 1024x1024 | Steps: 100 | Processes: 16 | Runs: 3
+Average time (3 runs): 20.2309 s
+CSV,1024,16,20.2309
+Grid: 1024x1024 | Steps: 100 | Processes: 32 | Runs: 3
+Average time (3 runs): 10.2025 s
+CSV,1024,32,10.2025
+
+--- Grid 2048x2048 ---
+Grid: 2048x2048 | Steps: 100 | Processes: 1 | Runs: 3
+Average time (3 runs): 1207.7815 s
+CSV,2048,1,1207.7815
+Grid: 2048x2048 | Steps: 100 | Processes: 2 | Runs: 3
+Average time (3 runs): 601.2839 s
+CSV,2048,2,601.2839
+Grid: 2048x2048 | Steps: 100 | Processes: 4 | Runs: 3
+Average time (3 runs): 300.2113 s
+CSV,2048,4,300.2113
+Grid: 2048x2048 | Steps: 100 | Processes: 16 | Runs: 3
+Average time (3 runs): 75.2290 s
+CSV,2048,16,75.2290
+Grid: 2048x2048 | Steps: 100 | Processes: 32 | Runs: 3
+Average time (3 runs): 37.6785 s
+CSV,2048,32,37.6785
+
+--- Grid 4096x4096 ---
+Grid: 4096x4096 | Steps: 100 | Processes: 1 | Runs: 3
+Average time (3 runs): 4792.9376 s
+CSV,4096,1,4792.9376
+Grid: 4096x4096 | Steps: 100 | Processes: 2 | Runs: 3
+Average time (3 runs): 2395.7076 s
+CSV,4096,2,2395.7076
+Grid: 4096x4096 | Steps: 100 | Processes: 4 | Runs: 3
+Average time (3 runs): 1199.0056 s
+CSV,4096,4,1199.0056
+Grid: 4096x4096 | Steps: 100 | Processes: 16 | Runs: 3
+Average time (3 runs): 299.7684 s
+CSV,4096,16,299.7684
+Grid: 4096x4096 | Steps: 100 | Processes: 32 | Runs: 3
+Average time (3 runs): 150.0204 s
+CSV,4096,32,150.0204

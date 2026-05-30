@@ -1,0 +1,1096 @@
+// Tuner variant — drop-in replacement for src/lennard-jones.cu.
+// Adds tune_skin_3d, tune_block_size_3d, and run_simulation_gpu_v7_3d
+// (auto-tuned wrapper around v6).
+//
+// Spatial sorting removed for benchmarking purposes.
+//
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <omp.h>
+
+#include <cuda_runtime.h>
+#include <cuda.h>
+
+#include "lennard-jones.h"
+
+// ─── CUDA error checking ───────────────────────────────────────────────────────
+#define CUDA_CHECK(call)                                                        \
+    do {                                                                        \
+        cudaError_t _e = (call);                                                \
+        if (_e != cudaSuccess) {                                                \
+            fprintf(stderr, "CUDA error %s:%d  %s\n",                          \
+                    __FILE__, __LINE__, cudaGetErrorString(_e));                \
+            exit(1);                                                            \
+        }                                                                       \
+    } while (0)
+
+// ─── Globals ──────────────────────────────────────────────────────────────────
+static double G_V_SHIFT = 0.0;
+
+#define NEIGHBOUR_SAFETY_FACTOR  4
+#define NEIGHBOUR_MIN            32
+
+static const double       SKIN_CANDIDATES[]  = { 0.05, 0.075, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50 };
+static const int          N_SKIN_CANDIDATES  = 11;
+static const unsigned int BLOCK_CANDIDATES[] = { 32, 64, 128, 256 };
+static const int          N_BLOCK_CANDIDATES = 4;
+static const int          WARMUP_STEPS       = 200;
+
+// ─── Pretune table ────────────────────────────────────────────────────────────
+#define LJ_PRETUNE_COUNT 0
+#if LJ_PRETUNE_COUNT > 0
+static const struct { unsigned int n; float skin_frac; unsigned int block; } LJ_PRETUNE[] = {
+    // { N, skin_frac, block_size }
+};
+#endif
+
+static double        g_skin       = 0.3 * R_CUT;
+static unsigned int  g_block_size = 32;
+
+#define R_LIST            (R_CUT + g_skin)
+#define R_LIST_SQ_HOST    ((R_CUT + g_skin) * (R_CUT + g_skin))
+#define HALF_SKIN_SQ_HOST ((g_skin * 0.5) * (g_skin * 0.5))
+
+static unsigned int  g_rebuild_counter = 0;
+
+static unsigned int *h_flag_pinned = nullptr;
+
+static unsigned int  g_n_cells_side = 0;
+static unsigned int  g_n_cells      = 0;
+static int          *d_cell_id      = nullptr;
+static int          *d_cell_start   = nullptr;
+static int          *d_cell_count   = nullptr;
+static int          *d_cell_part    = nullptr;
+
+static double       *d_x  = nullptr, *d_y  = nullptr, *d_z  = nullptr;
+static double       *d_vx = nullptr, *d_vy = nullptr, *d_vz = nullptr;
+static double       *d_fx = nullptr, *d_fy = nullptr, *d_fz = nullptr;
+static double       *d_pe_arr = nullptr;
+
+static int          *d_nl       = nullptr;
+static unsigned int *d_nl_count = nullptr;
+static double       *d_x_ref   = nullptr, *d_y_ref = nullptr, *d_z_ref = nullptr;
+static unsigned int *d_flag     = nullptr;
+static unsigned int *d_overflow = nullptr;
+static unsigned int  g_max_neighbours = 0;
+static unsigned int  d_n = 0;
+
+static double       *d_pe_total = nullptr;
+
+// =============================================================================
+// CPU HOST FUNCTIONS
+// =============================================================================
+
+double random_double(void) { return (double)rand() / (double)RAND_MAX; }
+
+double compute_ke(const Particle *particles, unsigned int n) {
+    double ke = 0.0;
+    for (unsigned int i = 0; i < n; ++i) {
+        const Particle *p = &particles[i];
+        ke += 0.5 * (p->vx * p->vx + p->vy * p->vy + p->vz * p->vz);
+    }
+    return ke;
+}
+
+double compute_v_shift(void) {
+    return 4.0 * EPSILON * (pow(SIGMA / R_CUT, 12.0) - pow(SIGMA / R_CUT, 6.0));
+}
+
+int initialize_particles(Particle *particles, unsigned int n, double box_size,
+                          double placement_fraction, unsigned int seed,
+                          double temperature) {
+    srand(seed);
+    unsigned int n_side   = (unsigned int)ceil(cbrt((double)n));
+    double placement_size = placement_fraction * box_size;
+    double offset         = 0.5 * (box_size - placement_size);
+    double delta          = placement_size / (double)n_side;
+
+    double mean_vx = 0.0, mean_vy = 0.0, mean_vz = 0.0;
+    for (unsigned int k = 0; k < n; k++) {
+        particles[k].id = k;
+        unsigned int ix = k % n_side;
+        unsigned int iy = (k / n_side) % n_side;
+        unsigned int iz = k / (n_side * n_side);
+        double x0 = offset + (0.5 + (double)ix) * delta;
+        double y0 = offset + (0.5 + (double)iy) * delta;
+        double z0 = offset + (0.5 + (double)iz) * delta;
+        particles[k].x  = x0 + (2.0*random_double()-1.0)*JITTER*delta;
+        particles[k].y  = y0 + (2.0*random_double()-1.0)*JITTER*delta;
+        particles[k].z  = z0 + (2.0*random_double()-1.0)*JITTER*delta;
+        particles[k].vx = 2.0*random_double()-1.0;
+        particles[k].vy = 2.0*random_double()-1.0;
+        particles[k].vz = 2.0*random_double()-1.0;
+        mean_vx += particles[k].vx;
+        mean_vy += particles[k].vy;
+        mean_vz += particles[k].vz;
+    }
+    mean_vx /= (double)n; mean_vy /= (double)n; mean_vz /= (double)n;
+    double ke = 0.0;
+    for (unsigned int k = 0; k < n; k++) {
+        particles[k].vx -= mean_vx;
+        particles[k].vy -= mean_vy;
+        particles[k].vz -= mean_vz;
+        ke += 0.5*(particles[k].vx*particles[k].vx +
+                   particles[k].vy*particles[k].vy +
+                   particles[k].vz*particles[k].vz);
+    }
+    double cur_temp = ke / (double)n;
+    if (cur_temp <= 0.0) return 0;
+    double scale = sqrt(temperature / cur_temp);
+    for (unsigned int k = 0; k < n; k++) {
+        particles[k].vx *= scale;
+        particles[k].vy *= scale;
+        particles[k].vz *= scale;
+    }
+    return 1;
+}
+
+void wrap_positions(Particle *particles, unsigned int n, double box_size) {
+    for (unsigned int i = 0; i < n; ++i) {
+        Particle *p = &particles[i];
+        double wx = fmod(p->x, box_size); if (wx < 0.0) wx += box_size; p->x = wx;
+        double wy = fmod(p->y, box_size); if (wy < 0.0) wy += box_size; p->y = wy;
+        double wz = fmod(p->z, box_size); if (wz < 0.0) wz += box_size; p->z = wz;
+    }
+}
+
+double compute_forces(Particle *particles, unsigned int n, double box_size) {
+    for (unsigned int i = 0; i < n; ++i) {
+        particles[i].fx = 0.0; particles[i].fy = 0.0; particles[i].fz = 0.0;
+    }
+    double pe = 0.0;
+    double v_shift = compute_v_shift();
+    for (unsigned int i = 0; i < n; ++i)
+        for (unsigned int j = 0; j < n; ++j) {
+            if (j == i) continue;
+            double dx = particles[j].x - particles[i].x;
+            double dy = particles[j].y - particles[i].y;
+            double dz = particles[j].z - particles[i].z;
+            dx -= box_size*nearbyint(dx/box_size);
+            dy -= box_size*nearbyint(dy/box_size);
+            dz -= box_size*nearbyint(dz/box_size);
+            double r = sqrt(dx*dx+dy*dy+dz*dz);
+            if (r >= R_CUT || r == 0.0) continue;
+            double sr  = SIGMA/r;
+            double fij = -24.0*EPSILON*(2.0*pow(sr,12.0)-pow(sr,6.0))/r;
+            particles[i].fx += fij*dx/r;
+            particles[i].fy += fij*dy/r;
+            particles[i].fz += fij*dz/r;
+            pe += 0.5*(4.0*EPSILON*(pow(sr,12.0)-pow(sr,6.0))-v_shift);
+        }
+    return pe;
+}
+
+double leapfrog_step(Particle *particles, unsigned int n, double box_size) {
+    for (unsigned int i = 0; i < n; ++i) {
+        particles[i].vx += 0.5*DT*particles[i].fx;
+        particles[i].vy += 0.5*DT*particles[i].fy;
+        particles[i].vz += 0.5*DT*particles[i].fz;
+        particles[i].x  += DT*particles[i].vx;
+        particles[i].y  += DT*particles[i].vy;
+        particles[i].z  += DT*particles[i].vz;
+    }
+    wrap_positions(particles, n, box_size);
+    double pe = compute_forces(particles, n, box_size);
+    for (unsigned int i = 0; i < n; ++i) {
+        particles[i].vx += 0.5*DT*particles[i].fx;
+        particles[i].vy += 0.5*DT*particles[i].fy;
+        particles[i].vz += 0.5*DT*particles[i].fz;
+    }
+    return pe;
+}
+
+SimulationResult run_simulation(Particle *particles, unsigned int n,
+                                unsigned int nsteps, double box_size, int log_steps) {
+    SimulationResult out;
+    out.start_potential = compute_forces(particles, n, box_size);
+    out.start_kinetic   = compute_ke(particles, n);
+    out.start_total     = out.start_kinetic + out.start_potential;
+    for (unsigned int step = 0; step < nsteps; step++) {
+        out.final_potential = leapfrog_step(particles, n, box_size);
+        out.final_kinetic   = compute_ke(particles, n);
+        out.final_total     = out.final_kinetic + out.final_potential;
+        if (log_steps)
+            printf("step=%6u  KE=%10.4f  PE=%10.4f  E=%12.6f\n",
+                   step, out.final_kinetic, out.final_potential, out.final_total);
+    }
+    out.n = n; out.particles = particles;
+    return out;
+}
+
+// =============================================================================
+// GPU MEMORY MANAGEMENT
+// =============================================================================
+
+static void configure_block_size_3d(unsigned int n, double box_size) {
+    const double box_vol = box_size * box_size * box_size;
+    const double density = (double)n / box_vol;
+    const double r       = R_LIST;
+    const double mean_nn = density * (4.0/3.0) * M_PI * r * r * r;
+    const double target  = 1.4 * mean_nn + 4.0;
+    unsigned int bs = 32;
+    while ((double)bs < target && bs < 256) bs <<= 1;
+    g_block_size = bs;
+}
+
+static void gpu_alloc_3d(unsigned int n, double box_size) {
+    if (d_n == n) return;
+    if (d_n > 0) {
+        CUDA_CHECK(cudaFree(d_x));  CUDA_CHECK(cudaFree(d_y));  CUDA_CHECK(cudaFree(d_z));
+        CUDA_CHECK(cudaFree(d_vx)); CUDA_CHECK(cudaFree(d_vy)); CUDA_CHECK(cudaFree(d_vz));
+        CUDA_CHECK(cudaFree(d_fx)); CUDA_CHECK(cudaFree(d_fy)); CUDA_CHECK(cudaFree(d_fz));
+        CUDA_CHECK(cudaFree(d_pe_arr)); CUDA_CHECK(cudaFree(d_pe_total));
+        if (d_nl)       { CUDA_CHECK(cudaFree(d_nl));       d_nl       = nullptr; }
+        if (h_flag_pinned) { cudaFreeHost(h_flag_pinned); h_flag_pinned = nullptr; }
+        CUDA_CHECK(cudaFree(d_nl_count));
+        CUDA_CHECK(cudaFree(d_x_ref)); CUDA_CHECK(cudaFree(d_y_ref)); CUDA_CHECK(cudaFree(d_z_ref));
+        CUDA_CHECK(cudaFree(d_flag));  CUDA_CHECK(cudaFree(d_overflow));
+        if (d_cell_id)    { CUDA_CHECK(cudaFree(d_cell_id));    d_cell_id    = nullptr; }
+        if (d_cell_start) { CUDA_CHECK(cudaFree(d_cell_start)); d_cell_start = nullptr; }
+        if (d_cell_count) { CUDA_CHECK(cudaFree(d_cell_count)); d_cell_count = nullptr; }
+        if (d_cell_part)  { CUDA_CHECK(cudaFree(d_cell_part));  d_cell_part  = nullptr; }
+    }
+
+    {
+        const double box_vol  = box_size * box_size * box_size;
+        const double density  = (double)n / box_vol;
+        const double r        = R_LIST;
+        const double expected = density * (4.0/3.0) * M_PI * r * r * r;
+        const unsigned int computed = (unsigned int)(NEIGHBOUR_SAFETY_FACTOR * expected) + 1;
+        g_max_neighbours = (computed > NEIGHBOUR_MIN) ? computed : NEIGHBOUR_MIN;
+        configure_block_size_3d(n, box_size);
+        fprintf(stdout, "[NL-3D] density=%.4f  expected_nn=%.1f  max_neighbours=%u  block=%u\n",
+                density, expected, g_max_neighbours, g_block_size);
+    }
+
+    g_n_cells_side = (unsigned int)(box_size / R_LIST);
+    if (g_n_cells_side < 1) g_n_cells_side = 1;
+    g_n_cells = g_n_cells_side * g_n_cells_side * g_n_cells_side;
+    fprintf(stdout, "[CELL] %u cells/side  %u total cells\n", g_n_cells_side, g_n_cells);
+
+    const size_t sz = (size_t)n * sizeof(double);
+    CUDA_CHECK(cudaMalloc(&d_x,  sz)); CUDA_CHECK(cudaMalloc(&d_y,  sz)); CUDA_CHECK(cudaMalloc(&d_z,  sz));
+    CUDA_CHECK(cudaMalloc(&d_vx, sz)); CUDA_CHECK(cudaMalloc(&d_vy, sz)); CUDA_CHECK(cudaMalloc(&d_vz, sz));
+    CUDA_CHECK(cudaMalloc(&d_fx, sz)); CUDA_CHECK(cudaMalloc(&d_fy, sz)); CUDA_CHECK(cudaMalloc(&d_fz, sz));
+    CUDA_CHECK(cudaMalloc(&d_pe_arr,   sz));
+    CUDA_CHECK(cudaMalloc(&d_pe_total, sizeof(double)));
+    CUDA_CHECK(cudaMalloc(&d_x_ref, sz)); CUDA_CHECK(cudaMalloc(&d_y_ref, sz)); CUDA_CHECK(cudaMalloc(&d_z_ref, sz));
+    CUDA_CHECK(cudaMalloc(&d_nl_count, (size_t)n * sizeof(unsigned int)));
+    CUDA_CHECK(cudaMalloc(&d_nl,       (size_t)n * g_max_neighbours * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_flag,     sizeof(unsigned int)));
+    CUDA_CHECK(cudaMalloc(&d_overflow, sizeof(unsigned int)));
+    CUDA_CHECK(cudaMallocHost(&h_flag_pinned, sizeof(unsigned int)));
+    CUDA_CHECK(cudaMalloc(&d_cell_id,    (size_t)n         * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_cell_count, (size_t)g_n_cells * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_cell_start, (size_t)g_n_cells * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_cell_part,  (size_t)n         * sizeof(int)));
+    d_n = n;
+}
+
+// =============================================================================
+// HOST <-> DEVICE TRANSFERS
+// =============================================================================
+
+static void upload_particles_3d(const Particle *p, unsigned int n) {
+    const size_t sz = n * sizeof(double);
+    double *hx  = (double*)malloc(sz), *hy  = (double*)malloc(sz), *hz  = (double*)malloc(sz);
+    double *hvx = (double*)malloc(sz), *hvy = (double*)malloc(sz), *hvz = (double*)malloc(sz);
+    for (unsigned int i = 0; i < n; ++i) {
+        hx[i]=p[i].x;   hy[i]=p[i].y;   hz[i]=p[i].z;
+        hvx[i]=p[i].vx; hvy[i]=p[i].vy; hvz[i]=p[i].vz;
+    }
+    CUDA_CHECK(cudaMemcpy(d_x,  hx,  sz, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_y,  hy,  sz, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_z,  hz,  sz, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_vx, hvx, sz, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_vy, hvy, sz, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_vz, hvz, sz, cudaMemcpyHostToDevice));
+    free(hx); free(hy); free(hz); free(hvx); free(hvy); free(hvz);
+}
+
+static void download_particles_3d(Particle *p, unsigned int n) {
+    const size_t sz = n * sizeof(double);
+    double *hx  = (double*)malloc(sz), *hy  = (double*)malloc(sz), *hz  = (double*)malloc(sz);
+    double *hvx = (double*)malloc(sz), *hvy = (double*)malloc(sz), *hvz = (double*)malloc(sz);
+    double *hfx = (double*)malloc(sz), *hfy = (double*)malloc(sz), *hfz = (double*)malloc(sz);
+    CUDA_CHECK(cudaMemcpy(hx,  d_x,  sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hy,  d_y,  sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hz,  d_z,  sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hvx, d_vx, sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hvy, d_vy, sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hvz, d_vz, sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hfx, d_fx, sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hfy, d_fy, sz, cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hfz, d_fz, sz, cudaMemcpyDeviceToHost));
+    for (unsigned int i = 0; i < n; ++i) {
+        p[i].x=hx[i];   p[i].y=hy[i];   p[i].z=hz[i];
+        p[i].vx=hvx[i]; p[i].vy=hvy[i]; p[i].vz=hvz[i];
+        p[i].fx=hfx[i]; p[i].fy=hfy[i]; p[i].fz=hfz[i];
+    }
+    free(hx); free(hy); free(hz); free(hvx); free(hvy); free(hvz);
+    free(hfx); free(hfy); free(hfz);
+}
+
+// =============================================================================
+// CELL LIST KERNELS
+// =============================================================================
+
+__global__ void kernel_cell_assign(
+    const double * __restrict__ x,
+    const double * __restrict__ y,
+    const double * __restrict__ z,
+    int          * __restrict__ cell_id,
+    int          * __restrict__ cell_count,
+    unsigned int n, double box_size, unsigned int n_cells_side)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    double cell_size = box_size / (double)n_cells_side;
+    int cx = (int)(x[i] / cell_size); if (cx >= (int)n_cells_side) cx = n_cells_side-1; if (cx < 0) cx = 0;
+    int cy = (int)(y[i] / cell_size); if (cy >= (int)n_cells_side) cy = n_cells_side-1; if (cy < 0) cy = 0;
+    int cz = (int)(z[i] / cell_size); if (cz >= (int)n_cells_side) cz = n_cells_side-1; if (cz < 0) cz = 0;
+    int cid = cx + cy * n_cells_side + cz * n_cells_side * n_cells_side;
+    cell_id[i] = cid;
+    atomicAdd(&cell_count[cid], 1);
+}
+
+__global__ void kernel_cell_fill(
+    const int * __restrict__ cell_id,
+    const int * __restrict__ cell_start,
+    int       * __restrict__ cell_part,
+    int       * __restrict__ cell_cursor,
+    unsigned int n)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    int cid  = cell_id[i];
+    int slot = atomicAdd(&cell_cursor[cid], 1);
+    cell_part[cell_start[cid] + slot] = (int)i;
+}
+
+// =============================================================================
+// NEIGHBOUR LIST BUILD — CELL LIST ACCELERATED, HALF LIST
+// =============================================================================
+
+__global__ void kernel_build_nl_cell(
+    const double * __restrict__ x,
+    const double * __restrict__ y,
+    const double * __restrict__ z,
+    const int    * __restrict__ cell_id,
+    const int    * __restrict__ cell_start,
+    const int    * __restrict__ cell_count,
+    const int    * __restrict__ cell_part,
+    int          * __restrict__ nl,
+    unsigned int * __restrict__ nl_count,
+    unsigned int * __restrict__ d_overflow,
+    unsigned int n, unsigned int max_neighbours,
+    double box_size, double r_list_sq,
+    unsigned int n_cells_side)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+
+    const double xi = x[i], yi = y[i], zi = z[i];
+    int cid  = cell_id[i];
+    int n2   = n_cells_side * n_cells_side;
+    int cz_i = cid / n2;
+    int cy_i = (cid % n2) / n_cells_side;
+    int cx_i = cid % n_cells_side;
+
+    unsigned int count = 0;
+    const double inv_box = 1.0 / box_size;
+
+    for (int dz = -1; dz <= 1; dz++)
+    for (int dy = -1; dy <= 1; dy++)
+    for (int dx = -1; dx <= 1; dx++) {
+        int nx = cx_i + dx; if (nx < 0) nx += n_cells_side; if (nx >= (int)n_cells_side) nx -= n_cells_side;
+        int ny = cy_i + dy; if (ny < 0) ny += n_cells_side; if (ny >= (int)n_cells_side) ny -= n_cells_side;
+        int nz = cz_i + dz; if (nz < 0) nz += n_cells_side; if (nz >= (int)n_cells_side) nz -= n_cells_side;
+
+        int ncid  = nx + ny * n_cells_side + nz * n2;
+        int start = cell_start[ncid];
+        int cnt   = cell_count[ncid];
+
+        for (int s = 0; s < cnt; s++) {
+            int j = cell_part[start + s];
+            if (j <= (int)i) continue;
+
+            double ddx = xi - x[j];
+            double ddy = yi - y[j];
+            double ddz = zi - z[j];
+            ddx -= box_size * rint(ddx * inv_box);
+            ddy -= box_size * rint(ddy * inv_box);
+            ddz -= box_size * rint(ddz * inv_box);
+
+            if (ddx*ddx + ddy*ddy + ddz*ddz < r_list_sq) {
+                if (count < max_neighbours)
+                    nl[i * max_neighbours + count] = j;
+                count++;
+            }
+        }
+    }
+
+    if (count > max_neighbours) {
+        nl_count[i] = max_neighbours;
+        atomicOr(d_overflow, i + 1u);
+    } else {
+        nl_count[i] = count;
+    }
+}
+
+// =============================================================================
+// FORCE KERNEL — half list + Newton's 3rd law via atomicAdd
+// =============================================================================
+
+__global__ void kernel_zero_forces(
+    double *fx, double *fy, double *fz, double *pe, unsigned int n)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    fx[i] = 0.0; fy[i] = 0.0; fz[i] = 0.0; pe[i] = 0.0;
+}
+
+__global__ void kernel_compute_forces_3d(
+    const double * __restrict__ x,
+    const double * __restrict__ y,
+    const double * __restrict__ z,
+    double       * __restrict__ fx,
+    double       * __restrict__ fy,
+    double       * __restrict__ fz,
+    double       * __restrict__ pe_out,
+    const int    * __restrict__ nl,
+    const unsigned int * __restrict__ nl_count,
+    unsigned int n, unsigned int max_neighbours,
+    double box_size, double v_shift)
+{
+    extern __shared__ double s_shared[];
+    const unsigned int bs = blockDim.x;
+    double *s_fx = s_shared;
+    double *s_fy = s_shared +     bs;
+    double *s_fz = s_shared + 2 * bs;
+    double *s_pe = s_shared + 3 * bs;
+
+    const unsigned int i   = blockIdx.x;
+    const unsigned int tid = threadIdx.x;
+    if (i >= n) return;
+
+    const double xi       = x[i], yi = y[i], zi = z[i];
+    const double r_cut_sq = R_CUT * R_CUT;
+    const double sig2     = SIGMA * SIGMA;
+    const unsigned int nn = nl_count[i];
+    const double inv_box  = 1.0 / box_size;
+
+    double lfx = 0.0, lfy = 0.0, lfz = 0.0, lpe = 0.0;
+
+    for (unsigned int k = tid; k < nn; k += bs) {
+        const unsigned int j = (unsigned int)nl[i * max_neighbours + k];
+
+        double dx = xi - x[j];
+        double dy = yi - y[j];
+        double dz = zi - z[j];
+        dx -= box_size * rint(dx * inv_box);
+        dy -= box_size * rint(dy * inv_box);
+        dz -= box_size * rint(dz * inv_box);
+
+        double r2 = dx*dx + dy*dy + dz*dz;
+        if (r2 >= r_cut_sq || r2 == 0.0) continue;
+
+        double inv_r2 = 1.0 / r2;
+        double sr2    = sig2 * inv_r2;
+        double sr6    = sr2 * sr2 * sr2;
+        double sr12   = sr6 * sr6;
+        double fij    = 24.0 * EPSILON * (2.0*sr12 - sr6) * inv_r2;
+        double fxij   = fij * dx;
+        double fyij   = fij * dy;
+        double fzij   = fij * dz;
+
+        lfx += fxij;
+        lfy += fyij;
+        lfz += fzij;
+        lpe += 4.0*EPSILON*(sr12 - sr6) - v_shift;
+
+        atomicAdd(&fx[j], -fxij);
+        atomicAdd(&fy[j], -fyij);
+        atomicAdd(&fz[j], -fzij);
+    }
+
+    s_fx[tid] = lfx; s_fy[tid] = lfy; s_fz[tid] = lfz; s_pe[tid] = lpe;
+    __syncthreads();
+
+    for (unsigned int stride = bs / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            s_fx[tid] += s_fx[tid + stride];
+            s_fy[tid] += s_fy[tid + stride];
+            s_fz[tid] += s_fz[tid + stride];
+            s_pe[tid] += s_pe[tid + stride];
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        atomicAdd(&fx[i], s_fx[0]);
+        atomicAdd(&fy[i], s_fy[0]);
+        atomicAdd(&fz[i], s_fz[0]);
+        pe_out[i] = s_pe[0];
+    }
+}
+
+// =============================================================================
+// GPU-SIDE PE AND KE REDUCTIONS
+// =============================================================================
+
+__global__ void kernel_reduce_pe(
+    const double * __restrict__ pe_arr,
+    double       * __restrict__ pe_total,
+    unsigned int n)
+{
+    extern __shared__ double s_pe[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i   = blockIdx.x * blockDim.x + tid;
+    s_pe[tid] = (i < n) ? pe_arr[i] : 0.0;
+    __syncthreads();
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) s_pe[tid] += s_pe[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0) atomicAdd(pe_total, s_pe[0]);
+}
+
+__global__ void kernel_reduce_ke(
+    const double * __restrict__ vx,
+    const double * __restrict__ vy,
+    const double * __restrict__ vz,
+    double       * __restrict__ ke_total,
+    unsigned int n)
+{
+    extern __shared__ double s_ke[];
+    unsigned int tid = threadIdx.x;
+    unsigned int i   = blockIdx.x * blockDim.x + tid;
+    s_ke[tid] = (i < n) ? 0.5*(vx[i]*vx[i] + vy[i]*vy[i] + vz[i]*vz[i]) : 0.0;
+    __syncthreads();
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) s_ke[tid] += s_ke[tid + stride];
+        __syncthreads();
+    }
+    if (tid == 0) atomicAdd(ke_total, s_ke[0]);
+}
+
+// =============================================================================
+// LEAPFROG AND REBUILD KERNELS
+// =============================================================================
+
+__global__ void kernel_leapfrog_kick_drift_3d(
+    double * __restrict__ x,  double * __restrict__ y,  double * __restrict__ z,
+    double * __restrict__ vx, double * __restrict__ vy, double * __restrict__ vz,
+    const double * __restrict__ fx,
+    const double * __restrict__ fy,
+    const double * __restrict__ fz,
+    unsigned int n, double box_size)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    vx[i] += 0.5*DT*fx[i]; vy[i] += 0.5*DT*fy[i]; vz[i] += 0.5*DT*fz[i];
+    x[i]  += DT*vx[i];     y[i]  += DT*vy[i];     z[i]  += DT*vz[i];
+    double wx = fmod(x[i],box_size); if (wx<0.0) wx+=box_size; x[i]=wx;
+    double wy = fmod(y[i],box_size); if (wy<0.0) wy+=box_size; y[i]=wy;
+    double wz = fmod(z[i],box_size); if (wz<0.0) wz+=box_size; z[i]=wz;
+}
+
+__global__ void kernel_leapfrog_kick_3d(
+    double * __restrict__ vx, double * __restrict__ vy, double * __restrict__ vz,
+    const double * __restrict__ fx,
+    const double * __restrict__ fy,
+    const double * __restrict__ fz,
+    unsigned int n)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    vx[i] += 0.5*DT*fx[i];
+    vy[i] += 0.5*DT*fy[i];
+    vz[i] += 0.5*DT*fz[i];
+}
+
+__global__ void kernel_check_rebuild_3d(
+    const double * __restrict__ x,     const double * __restrict__ y,
+    const double * __restrict__ z,     const double * __restrict__ x_ref,
+    const double * __restrict__ y_ref, const double * __restrict__ z_ref,
+    unsigned int n, double box_size, double half_skin_sq, unsigned int *d_flag)
+{
+    extern __shared__ unsigned int s_flag[];
+    unsigned int i   = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int tid = threadIdx.x;
+    s_flag[tid] = 0;
+    if (i < n) {
+        double dx = x[i]-x_ref[i], dy = y[i]-y_ref[i], dz = z[i]-z_ref[i];
+        dx -= box_size*nearbyint(dx/box_size);
+        dy -= box_size*nearbyint(dy/box_size);
+        dz -= box_size*nearbyint(dz/box_size);
+        if (dx*dx+dy*dy+dz*dz > half_skin_sq) s_flag[tid] = 1;
+    }
+    __syncthreads();
+    for (unsigned int stride = blockDim.x/2; stride > 0; stride >>= 1) {
+        if (tid < stride) s_flag[tid] |= s_flag[tid+stride];
+        __syncthreads();
+    }
+    if (tid == 0 && s_flag[0]) atomicOr(d_flag, 1u);
+}
+
+// =============================================================================
+// HOST: BUILD NEIGHBOUR LIST (CELL-ACCELERATED, NO SPATIAL SORT)
+// =============================================================================
+
+static void gpu_build_neighbour_list_3d(unsigned int n, double box_size) {
+    const unsigned int threads = 256;
+    const unsigned int blocks  = (n + threads - 1) / threads;
+
+    CUDA_CHECK(cudaMemset(d_cell_count, 0, g_n_cells * sizeof(int)));
+    kernel_cell_assign<<<blocks, threads>>>(
+        d_x, d_y, d_z, d_cell_id, d_cell_count, n, box_size, g_n_cells_side);
+
+    {
+        int *h_count = (int*)malloc(g_n_cells * sizeof(int));
+        int *h_start = (int*)malloc(g_n_cells * sizeof(int));
+        CUDA_CHECK(cudaMemcpy(h_count, d_cell_count, g_n_cells*sizeof(int), cudaMemcpyDeviceToHost));
+        int running = 0;
+        for (unsigned int c = 0; c < g_n_cells; c++) { h_start[c] = running; running += h_count[c]; }
+        CUDA_CHECK(cudaMemcpy(d_cell_start, h_start, g_n_cells*sizeof(int), cudaMemcpyHostToDevice));
+        free(h_count); free(h_start);
+    }
+
+    CUDA_CHECK(cudaMemset(d_cell_count, 0, g_n_cells * sizeof(int)));
+    kernel_cell_fill<<<blocks, threads>>>(d_cell_id, d_cell_start, d_cell_part, d_cell_count, n);
+
+    g_rebuild_counter++;
+
+    CUDA_CHECK(cudaMemset(d_overflow, 0, sizeof(unsigned int)));
+    kernel_build_nl_cell<<<blocks, threads>>>(
+        d_x, d_y, d_z,
+        d_cell_id, d_cell_start, d_cell_count, d_cell_part,
+        d_nl, d_nl_count, d_overflow,
+        n, g_max_neighbours, box_size, R_LIST_SQ_HOST, g_n_cells_side);
+
+    unsigned int overflow = 0;
+    CUDA_CHECK(cudaMemcpy(&overflow, d_overflow, sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    if (overflow > 0) {
+        fprintf(stderr, "[NL-3D] OVERFLOW: particle %u exceeds max_neighbours=%u. Aborting.\n",
+                overflow - 1u, g_max_neighbours);
+        exit(1);
+    }
+
+    CUDA_CHECK(cudaMemcpy(d_x_ref, d_x, n*sizeof(double), cudaMemcpyDeviceToDevice));
+    CUDA_CHECK(cudaMemcpy(d_y_ref, d_y, n*sizeof(double), cudaMemcpyDeviceToDevice));
+    CUDA_CHECK(cudaMemcpy(d_z_ref, d_z, n*sizeof(double), cudaMemcpyDeviceToDevice));
+}
+
+// =============================================================================
+// HOST: CHECK REBUILD, COMPUTE FORCES, LEAPFROG STEP
+// =============================================================================
+
+static int gpu_needs_rebuild_3d(unsigned int n, double box_size) {
+    CUDA_CHECK(cudaMemsetAsync(d_flag, 0, sizeof(unsigned int)));
+    const unsigned int threads = 128;
+    const unsigned int blocks  = (n + threads - 1) / threads;
+    kernel_check_rebuild_3d<<<blocks, threads, threads * sizeof(unsigned int)>>>(
+        d_x, d_y, d_z, d_x_ref, d_y_ref, d_z_ref,
+        n, box_size, HALF_SKIN_SQ_HOST, d_flag);
+    CUDA_CHECK(cudaMemcpy(h_flag_pinned, d_flag, sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    return (int)(*h_flag_pinned);
+}
+
+static double gpu_compute_forces_3d(unsigned int n, double box_size) {
+    const unsigned int zth = 256;
+    kernel_zero_forces<<<(n + zth - 1) / zth, zth>>>(d_fx, d_fy, d_fz, d_pe_arr, n);
+
+    const size_t shm = 4 * g_block_size * sizeof(double);
+    kernel_compute_forces_3d<<<n, g_block_size, shm>>>(
+        d_x, d_y, d_z, d_fx, d_fy, d_fz, d_pe_arr,
+        d_nl, d_nl_count, n, g_max_neighbours, box_size, G_V_SHIFT);
+
+    CUDA_CHECK(cudaMemsetAsync(d_pe_total, 0, sizeof(double)));
+    const unsigned int rth = 256;
+    kernel_reduce_pe<<<(n + rth - 1) / rth, rth, rth*sizeof(double)>>>(d_pe_arr, d_pe_total, n);
+
+    double pe = 0.0;
+    CUDA_CHECK(cudaMemcpy(&pe, d_pe_total, sizeof(double), cudaMemcpyDeviceToHost));
+    return pe;
+}
+
+static double gpu_leapfrog_step_3d(unsigned int n, double box_size) {
+    const unsigned int threads = 256;
+    const unsigned int blocks  = (n + threads - 1) / threads;
+
+    kernel_leapfrog_kick_drift_3d<<<blocks, threads>>>(
+        d_x, d_y, d_z, d_vx, d_vy, d_vz, d_fx, d_fy, d_fz, n, box_size);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    if (gpu_needs_rebuild_3d(n, box_size))
+        gpu_build_neighbour_list_3d(n, box_size);
+
+    const double pe = gpu_compute_forces_3d(n, box_size);
+
+    kernel_leapfrog_kick_3d<<<blocks, threads>>>(d_vx, d_vy, d_vz, d_fx, d_fy, d_fz, n);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    return pe;
+}
+
+// =============================================================================
+// TUNING API
+// =============================================================================
+
+unsigned int tune_block_size_3d(unsigned int n) {
+    unsigned int *h_count = (unsigned int*)malloc(n * sizeof(unsigned int));
+    CUDA_CHECK(cudaMemcpy(h_count, d_nl_count, n * sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    unsigned long long total = 0;
+    unsigned int true_max = 0;
+    for (unsigned int i = 0; i < n; ++i) {
+        total += h_count[i];
+        if (h_count[i] > true_max) true_max = h_count[i];
+    }
+    free(h_count);
+    const double avg_nn = (double)total / (double)n;
+    unsigned int bs = 32;
+    while (bs < (unsigned int)avg_nn && bs < 256) bs <<= 1;
+    g_block_size = bs;
+    fprintf(stdout, "[TUNE-3D] tune_block_size: avg_nn=%.1f  true_max=%u  block_size=%u\n",
+            avg_nn, true_max, bs);
+    return bs;
+}
+
+TuneResult tune_skin_3d(Particle *particles, unsigned int n, double box_size) {
+
+    if (d_n != n) {
+        fprintf(stdout, "[TUNE-3D] (re)allocating GPU memory for N=%u.\n", n);
+        gpu_alloc_3d(n, box_size);
+    }
+    upload_particles_3d(particles, n);
+
+    G_V_SHIFT = compute_v_shift();
+    fprintf(stdout, "[TUNE-3D] sweeping %d candidates x %d warmup steps\n",
+            N_SKIN_CANDIDATES, WARMUP_STEPS);
+
+    // ── GPU WARMUP ────────────────────────────────────────────────────────
+    {
+        const int WARMUP_PRE = 300;
+        fprintf(stdout, "[TUNE-3D] warming up GPU (%d steps)...\n", WARMUP_PRE);
+
+        g_skin = 0.3 * R_CUT;
+        {
+            const double box_vol  = box_size * box_size * box_size;
+            const double density  = (double)n / box_vol;
+            const double r        = R_LIST;
+            const double expected = density * (4.0/3.0) * M_PI * r * r * r;
+            const unsigned int computed = (unsigned int)(NEIGHBOUR_SAFETY_FACTOR * expected) + 1;
+            g_max_neighbours = (computed > NEIGHBOUR_MIN) ? computed : NEIGHBOUR_MIN;
+            g_n_cells_side = (unsigned int)(box_size / R_LIST);
+            if (g_n_cells_side < 1) g_n_cells_side = 1;
+            g_n_cells = g_n_cells_side * g_n_cells_side * g_n_cells_side;
+            if (d_cell_start) { CUDA_CHECK(cudaFree(d_cell_start)); d_cell_start = nullptr; }
+            if (d_cell_count) { CUDA_CHECK(cudaFree(d_cell_count)); d_cell_count = nullptr; }
+            if (d_nl)         { CUDA_CHECK(cudaFree(d_nl));         d_nl         = nullptr; }
+            CUDA_CHECK(cudaMalloc(&d_cell_count, g_n_cells * sizeof(int)));
+            CUDA_CHECK(cudaMalloc(&d_cell_start, g_n_cells * sizeof(int)));
+            CUDA_CHECK(cudaMalloc(&d_nl, (size_t)n * g_max_neighbours * sizeof(int)));
+        }
+        g_rebuild_counter = 0;
+        upload_particles_3d(particles, n);
+        CUDA_CHECK(cudaMemset(d_fx, 0, (size_t)n * sizeof(double)));
+        CUDA_CHECK(cudaMemset(d_fy, 0, (size_t)n * sizeof(double)));
+        CUDA_CHECK(cudaMemset(d_fz, 0, (size_t)n * sizeof(double)));
+        gpu_build_neighbour_list_3d(n, box_size);
+
+        const unsigned int wth = 256;
+        const unsigned int wbl = (n + wth - 1) / wth;
+        for (int s = 0; s < WARMUP_PRE; ++s) {
+            kernel_leapfrog_kick_drift_3d<<<wbl, wth>>>(
+                d_x, d_y, d_z, d_vx, d_vy, d_vz, d_fx, d_fy, d_fz, n, box_size);
+            CUDA_CHECK(cudaDeviceSynchronize());
+            if (gpu_needs_rebuild_3d(n, box_size))
+                gpu_build_neighbour_list_3d(n, box_size);
+            kernel_zero_forces<<<(n+255)/256, 256>>>(d_fx, d_fy, d_fz, d_pe_arr, n);
+            const size_t shm = 4 * g_block_size * sizeof(double);
+            kernel_compute_forces_3d<<<n, g_block_size, shm>>>(
+                d_x, d_y, d_z, d_fx, d_fy, d_fz, d_pe_arr,
+                d_nl, d_nl_count, n, g_max_neighbours, box_size, G_V_SHIFT);
+            CUDA_CHECK(cudaDeviceSynchronize());
+            kernel_leapfrog_kick_3d<<<wbl, wth>>>(
+                d_vx, d_vy, d_vz, d_fx, d_fy, d_fz, n);
+            CUDA_CHECK(cudaDeviceSynchronize());
+        }
+        CUDA_CHECK(cudaDeviceSynchronize());
+        fprintf(stdout, "[TUNE-3D] warmup done.\n");
+    }
+    // ── END WARMUP ────────────────────────────────────────────────────────
+
+    cudaEvent_t ev_start, ev_stop;
+    CUDA_CHECK(cudaEventCreate(&ev_start));
+    CUDA_CHECK(cudaEventCreate(&ev_stop));
+
+    const unsigned int threads = 256;
+    const unsigned int blocks  = (n + threads - 1) / threads;
+
+    double       best_time   = 1e30;
+    double       best_skin   = SKIN_CANDIDATES[0] * R_CUT;
+    unsigned int best_max_nn = 0;
+    unsigned int best_bs     = 64;
+
+    static const int N_TIMING_RUNS = 3;
+
+    for (int c = 0; c < N_SKIN_CANDIDATES; ++c) {
+        const double skin_abs = SKIN_CANDIDATES[c] * R_CUT;
+        g_skin = skin_abs;
+
+        {
+            const double box_vol  = box_size * box_size * box_size;
+            const double density  = (double)n / box_vol;
+            const double r        = R_LIST;
+            const double expected = density * (4.0/3.0) * M_PI * r * r * r;
+            const unsigned int computed = (unsigned int)(NEIGHBOUR_SAFETY_FACTOR * expected) + 1;
+            g_max_neighbours = (computed > NEIGHBOUR_MIN) ? computed : NEIGHBOUR_MIN;
+
+            g_n_cells_side = (unsigned int)(box_size / R_LIST);
+            if (g_n_cells_side < 1) g_n_cells_side = 1;
+            unsigned int new_n_cells = g_n_cells_side * g_n_cells_side * g_n_cells_side;
+            if (new_n_cells != g_n_cells) {
+                g_n_cells = new_n_cells;
+                CUDA_CHECK(cudaFree(d_cell_start));
+                CUDA_CHECK(cudaFree(d_cell_count));
+                CUDA_CHECK(cudaMalloc(&d_cell_count, g_n_cells * sizeof(int)));
+                CUDA_CHECK(cudaMalloc(&d_cell_start, g_n_cells * sizeof(int)));
+            }
+            CUDA_CHECK(cudaFree(d_nl));
+            CUDA_CHECK(cudaMalloc(&d_nl, (size_t)n * g_max_neighbours * sizeof(int)));
+        }
+
+        g_rebuild_counter = 0;
+        upload_particles_3d(particles, n);
+        CUDA_CHECK(cudaMemset(d_fx, 0, (size_t)n * sizeof(double)));
+        CUDA_CHECK(cudaMemset(d_fy, 0, (size_t)n * sizeof(double)));
+        CUDA_CHECK(cudaMemset(d_fz, 0, (size_t)n * sizeof(double)));
+        gpu_build_neighbour_list_3d(n, box_size);
+
+        double avg_nn = 0.0;
+        {
+            unsigned int *h_count = (unsigned int*)malloc(n * sizeof(unsigned int));
+            CUDA_CHECK(cudaMemcpy(h_count, d_nl_count, n*sizeof(unsigned int), cudaMemcpyDeviceToHost));
+            unsigned long long tot = 0;
+            for (unsigned int i = 0; i < n; ++i) tot += h_count[i];
+            free(h_count);
+            avg_nn = (double)tot / (double)n;
+        }
+
+        for (int b = 0; b < N_BLOCK_CANDIDATES; ++b) {
+            const unsigned int candidate_bs = BLOCK_CANDIDATES[b];
+
+            float best_ms_for_candidate = 1e30f;
+
+            for (int run = 0; run < N_TIMING_RUNS; ++run) {
+                g_rebuild_counter = 0;
+                upload_particles_3d(particles, n);
+                CUDA_CHECK(cudaMemset(d_fx, 0, (size_t)n * sizeof(double)));
+                CUDA_CHECK(cudaMemset(d_fy, 0, (size_t)n * sizeof(double)));
+                CUDA_CHECK(cudaMemset(d_fz, 0, (size_t)n * sizeof(double)));
+                gpu_build_neighbour_list_3d(n, box_size);
+
+                CUDA_CHECK(cudaEventRecord(ev_start));
+                for (int s = 0; s < WARMUP_STEPS; ++s) {
+                    kernel_leapfrog_kick_drift_3d<<<blocks, threads>>>(
+                        d_x, d_y, d_z, d_vx, d_vy, d_vz, d_fx, d_fy, d_fz, n, box_size);
+                    CUDA_CHECK(cudaDeviceSynchronize());
+
+                    if (gpu_needs_rebuild_3d(n, box_size))
+                        gpu_build_neighbour_list_3d(n, box_size);
+
+                    kernel_zero_forces<<<(n + 255) / 256, 256>>>(d_fx, d_fy, d_fz, d_pe_arr, n);
+
+                    const size_t shm = 4 * candidate_bs * sizeof(double);
+                    kernel_compute_forces_3d<<<n, candidate_bs, shm>>>(
+                        d_x, d_y, d_z, d_fx, d_fy, d_fz, d_pe_arr,
+                        d_nl, d_nl_count, n, g_max_neighbours, box_size, G_V_SHIFT);
+                    CUDA_CHECK(cudaDeviceSynchronize());
+
+                    kernel_leapfrog_kick_3d<<<blocks, threads>>>(
+                        d_vx, d_vy, d_vz, d_fx, d_fy, d_fz, n);
+                    CUDA_CHECK(cudaDeviceSynchronize());
+                }
+                CUDA_CHECK(cudaEventRecord(ev_stop));
+                CUDA_CHECK(cudaEventSynchronize(ev_stop));
+
+                float ms = 0.0f;
+                CUDA_CHECK(cudaEventElapsedTime(&ms, ev_start, ev_stop));
+                if (ms < best_ms_for_candidate) best_ms_for_candidate = ms;
+            }
+
+            double ms_per_step = (double)best_ms_for_candidate / WARMUP_STEPS;
+
+            fprintf(stdout, "[TUNE-3D]   skin=%.3f*R_CUT  avg_nn=%.1f  max_nn=%u  block=%u  %.3f ms/step\n",
+                    SKIN_CANDIDATES[c], avg_nn, g_max_neighbours, candidate_bs, ms_per_step);
+
+            if (ms_per_step < best_time - 1e-4 ||
+                (fabs(ms_per_step - best_time) <= 1e-4 && skin_abs < best_skin) ||
+                (fabs(ms_per_step - best_time) <= 1e-4 && skin_abs == best_skin
+                 && candidate_bs < best_bs)) {
+                best_time   = ms_per_step;
+                best_skin   = skin_abs;
+                best_max_nn = g_max_neighbours;
+                best_bs     = candidate_bs;
+            }
+        }
+    }
+
+    CUDA_CHECK(cudaEventDestroy(ev_start));
+    CUDA_CHECK(cudaEventDestroy(ev_stop));
+
+    g_skin           = best_skin;
+    g_max_neighbours = best_max_nn;
+    g_block_size     = best_bs;
+
+    {
+        unsigned int new_cells_side = (unsigned int)(box_size / R_LIST);
+        if (new_cells_side < 1) new_cells_side = 1;
+        unsigned int new_n_cells = new_cells_side * new_cells_side * new_cells_side;
+        if (d_cell_start) { CUDA_CHECK(cudaFree(d_cell_start)); d_cell_start = nullptr; }
+        if (d_cell_count) { CUDA_CHECK(cudaFree(d_cell_count)); d_cell_count = nullptr; }
+        g_n_cells_side = new_cells_side;
+        g_n_cells      = new_n_cells;
+        CUDA_CHECK(cudaMalloc(&d_cell_count, g_n_cells * sizeof(int)));
+        CUDA_CHECK(cudaMalloc(&d_cell_start, g_n_cells * sizeof(int)));
+    }
+    if (d_nl) { CUDA_CHECK(cudaFree(d_nl)); d_nl = nullptr; }
+    CUDA_CHECK(cudaMalloc(&d_nl, (size_t)n * g_max_neighbours * sizeof(int)));
+    gpu_build_neighbour_list_3d(n, box_size);
+
+    fprintf(stdout, "[TUNE-3D] selected skin=%.4f (%.2f*R_CUT)  max_nn=%u  block=%u  %.3f ms/step\n",
+            best_skin, best_skin/R_CUT, best_max_nn, best_bs, best_time);
+
+    TuneResult result;
+    result.skin           = best_skin;
+    result.max_neighbours = best_max_nn;
+    result.block_size     = best_bs;
+    result.ms_per_step    = best_time;
+    return result;
+}
+
+// =============================================================================
+// PUBLIC SIMULATION API
+// =============================================================================
+
+SimulationResult run_simulation_gpu_v6_3d(Particle *particles, unsigned int n,
+                                           unsigned int nsteps, double box_size,
+                                           int log_steps) {
+    gpu_alloc_3d(n, box_size);
+    upload_particles_3d(particles, n);
+    G_V_SHIFT = compute_v_shift();
+
+    CUDA_CHECK(cudaMemset(d_fx, 0, (size_t)n * sizeof(double)));
+    CUDA_CHECK(cudaMemset(d_fy, 0, (size_t)n * sizeof(double)));
+    CUDA_CHECK(cudaMemset(d_fz, 0, (size_t)n * sizeof(double)));
+
+    gpu_build_neighbour_list_3d(n, box_size);
+
+    SimulationResult out;
+    out.start_potential = gpu_compute_forces_3d(n, box_size);
+    out.start_kinetic   = compute_ke(particles, n);
+    out.start_total     = out.start_kinetic + out.start_potential;
+
+    for (unsigned int step = 0; step < nsteps; ++step) {
+        out.final_potential = gpu_leapfrog_step_3d(n, box_size);
+
+        if (log_steps) {
+            download_particles_3d(particles, n);
+            out.final_kinetic = compute_ke(particles, n);
+            out.final_total   = out.final_kinetic + out.final_potential;
+            printf("step=%6u  KE=%12.6f  PE=%12.6f  E=%12.6f\n",
+                   step, out.final_kinetic, out.final_potential, out.final_total);
+        }
+    }
+
+    download_particles_3d(particles, n);
+    out.final_kinetic = compute_ke(particles, n);
+    out.final_total   = out.final_kinetic + out.final_potential;
+    out.n         = n;
+    out.particles = particles;
+    return out;
+}
+
+SimulationResult run_simulation_gpu_v8_3d(Particle *particles, unsigned int n,
+                                           unsigned int nsteps, double box_size,
+                                           int log_steps) {
+    // tune_skin_3d(particles, n, box_size);
+    return run_simulation_gpu_v6_3d(particles, n, nsteps, box_size, log_steps);
+}
+
+// =============================================================================
+// OFFLINE SWEEP
+// =============================================================================
+
+void tune_sweep_and_print(unsigned int n_min, unsigned int n_max, unsigned int n_step,
+                           double density, double temperature, unsigned int seed) {
+    const unsigned int count = (n_max - n_min) / n_step + 1;
+    printf("// Auto-generated by tune_sweep_and_print\n");
+    printf("// density=%.4f  temperature=%.4f  seed=%u\n", density, temperature, seed);
+    printf("#define LJ_PRETUNE_COUNT %u\n", count);
+    printf("static const struct { unsigned int n; float skin_frac; unsigned int block; } "
+           "LJ_PRETUNE[] = {\n");
+
+    for (unsigned int n = n_min; n <= n_max; n += n_step) {
+
+        g_skin            = 0.3 * R_CUT;
+        g_block_size      = 128;
+        g_max_neighbours  = 0;
+        g_n_cells_side    = 0;
+        g_n_cells         = 0;
+        g_rebuild_counter = 0;
+        d_n               = 0;
+
+        if (d_x)          { cudaFree(d_x);          d_x          = nullptr; }
+        if (d_y)          { cudaFree(d_y);          d_y          = nullptr; }
+        if (d_z)          { cudaFree(d_z);          d_z          = nullptr; }
+        if (d_vx)         { cudaFree(d_vx);         d_vx         = nullptr; }
+        if (d_vy)         { cudaFree(d_vy);         d_vy         = nullptr; }
+        if (d_vz)         { cudaFree(d_vz);         d_vz         = nullptr; }
+        if (d_fx)         { cudaFree(d_fx);         d_fx         = nullptr; }
+        if (d_fy)         { cudaFree(d_fy);         d_fy         = nullptr; }
+        if (d_fz)         { cudaFree(d_fz);         d_fz         = nullptr; }
+        if (d_pe_arr)     { cudaFree(d_pe_arr);     d_pe_arr     = nullptr; }
+        if (d_pe_total)   { cudaFree(d_pe_total);   d_pe_total   = nullptr; }
+        if (d_x_ref)      { cudaFree(d_x_ref);      d_x_ref      = nullptr; }
+        if (d_y_ref)      { cudaFree(d_y_ref);      d_y_ref      = nullptr; }
+        if (d_z_ref)      { cudaFree(d_z_ref);      d_z_ref      = nullptr; }
+        if (d_nl_count)   { cudaFree(d_nl_count);   d_nl_count   = nullptr; }
+        if (d_nl)         { cudaFree(d_nl);         d_nl         = nullptr; }
+        if (d_flag)       { cudaFree(d_flag);       d_flag       = nullptr; }
+        if (d_overflow)   { cudaFree(d_overflow);   d_overflow   = nullptr; }
+        if (d_cell_id)    { cudaFree(d_cell_id);    d_cell_id    = nullptr; }
+        if (d_cell_start) { cudaFree(d_cell_start); d_cell_start = nullptr; }
+        if (d_cell_count) { cudaFree(d_cell_count); d_cell_count = nullptr; }
+        if (d_cell_part)  { cudaFree(d_cell_part);  d_cell_part  = nullptr; }
+        if (h_flag_pinned){ cudaFreeHost(h_flag_pinned); h_flag_pinned = nullptr; }
+
+        const double particle_box_size = ceil(cbrt((double)n / density));
+        const double box_size          = (4.0 / 3.0) * particle_box_size;
+        const double box_fraction      = particle_box_size / box_size;
+
+        Particle *particles = (Particle*)calloc(n, sizeof(Particle));
+        if (!particles) { fprintf(stderr, "[SWEEP] OOM at N=%u\n", n); break; }
+
+        initialize_particles(particles, n, box_size, box_fraction, seed, temperature);
+
+        fprintf(stderr, "[SWEEP] N=%u  box=%.2f ...\n", n, box_size);
+        fprintf(stdout, "[DEBUG] n=%u  particle_box=%.10f  box_size=%.10f  density=%.10f\n",
+                n, particle_box_size, box_size, (double)n/(box_size*box_size*box_size));
+
+        TuneResult r = tune_skin_3d(particles, n, box_size);
+
+        printf("    { %6u, %.2ff, %3u },  // %.3f ms/step\n",
+               n, (float)(r.skin / R_CUT), r.block_size, r.ms_per_step);
+        fflush(stdout);
+        free(particles);
+    }
+
+    printf("};\n");
+}

@@ -1,0 +1,13 @@
+nvcc -Wno-deprecated-gpu-targets -gencode=arch=compute_70,code=sm_70 -O3 -Xcompiler --openmp,-Wall -c -o main.o src/main.c
+nvcc -Wno-deprecated-gpu-targets -gencode=arch=compute_70,code=sm_70 -O3 -Xcompiler --openmp,-Wall lennard-jones-tuner-v3.o main.o -o lj.out -lm
+[DEBUG] n=100000  particle_box=48.0000000000  box_size=64.0000000000  density=0.3814697266
+[NL-3D] skin=0.4224 (0.169*R_CUT) density=0.3815 expected_nn=39.9 max_neighbours=160 (FULL list, warp-per-particle)
+[CELL] 21 cells/side  9261 total cells
+[NL-3D] neighbour-list rebuilds: 222 over 5000 steps (every 22.5 steps)
+Simulation time 5000 steps: 1.323 seconds
+
+Finished simulation.
+Final KE: 125341.3954 | delta: +75341.3954
+Final PE: -397275.8455 | delta: -75359.5772
+Final E:  -271934.4502 | delta: -18.1818
+Simulation time 5000 steps: 1.583 seconds

@@ -1,0 +1,4 @@
+lennard-jones.cu - version with pre-tune values
+lennard-jones-tuner.cu - version with tuner + spatial sorting
+lennard-jones-tuner-v2.cu - version with tuner + without spatial sorting
+lennard-jones-tuner-v3.cu - version with initial hypothesis

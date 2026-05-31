@@ -105,6 +105,13 @@ SimulationResult run_simulation_gpu_v8_3d(Particle *particles, unsigned int n,
 SimulationResult run_simulation_gpu_v9_3d(Particle *particles, unsigned int n,
                                            unsigned int nsteps, double box_size,
                                            int log_steps);
+SimulationResult run_simulation_gpu_graph_3d(Particle *particles, unsigned int n,
+                                          unsigned int nsteps, double box_size,
+                                          int log_steps);
+SimulationResult run_simulation_gpu_warpnl_3d(Particle *particles, unsigned int n,
+                                          unsigned int nsteps, double box_size,
+                                          int log_steps);
+
 
 #ifdef __cplusplus
 }

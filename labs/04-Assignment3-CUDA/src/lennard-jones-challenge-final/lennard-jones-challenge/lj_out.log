@@ -1,0 +1,12 @@
+nvcc -Wno-deprecated-gpu-targets -gencode=arch=compute_70,code=sm_70 -O3 -Xcompiler --openmp,-Wall -c -o lennard-jones.o src/lennard-jones.cu
+nvcc -Wno-deprecated-gpu-targets -gencode=arch=compute_70,code=sm_70 -O3 -Xcompiler --openmp,-Wall lennard-jones.o main.o -o lj.out -lm
+[AUTO] N=10000 <= 43000  ->  graph variant
+[GRAPH] skin=0.3750 (0.150*R_CUT)  rebuild_every=8  density=0.3962  expected_nn=39.4  max_neighbours=158  cells=1000(10/side)
+[GRAPH] steady step captured; rebuild every 8 steps (skin 0.150*R_CUT)
+Simulation time 5000 steps: 0.213 seconds
+
+Finished simulation.
+Final KE: 16450.2951 | delta: +11450.2951
+Final PE: -31091.7178 | delta: -11454.2954
+Final E:  -14641.4227 | delta: -4.0003
+Simulation time 5000 steps: 0.392 seconds

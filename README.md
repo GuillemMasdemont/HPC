@@ -93,3 +93,7 @@
   - lectures:
     [Performance Measures](lectures/22-performance/performance.md)
   - labs: Consultations regarding Assignment 4
+ 
+- Week 14:
+  - lectures:
+  - labs: Assignment 4 report defense  
